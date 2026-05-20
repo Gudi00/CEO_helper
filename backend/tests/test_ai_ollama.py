@@ -232,6 +232,6 @@ async def test_ollama_passes_format_and_options_to_client():
     assert captured["model"] == "gemma3:4b"
     assert captured["format"] == "json"
     assert captured["options"]["temperature"] == 0.1
-    assert captured["options"]["num_predict"] == 200
+    assert captured["options"]["num_predict"] == 1024
     roles = [m["role"] for m in captured["messages"]]
     assert roles == ["system", "user"]

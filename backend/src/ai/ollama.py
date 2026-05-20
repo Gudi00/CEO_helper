@@ -36,7 +36,7 @@ class OllamaProvider(AIProvider):
                 self._client.chat(
                     model=self._model,
                     format="json",
-                    options={"temperature": 0.1, "num_predict": 200},
+                    options={"temperature": 0.1, "num_predict": 1024},
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": prompt},
