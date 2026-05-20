@@ -14,12 +14,16 @@ describe("readFormValues", () => {
       backendUrl: { value: "  http://x  " },
       backendToken: { value: " tok " },
       showOverlay: { checked: true },
+      modelPreference: { value: "accurate" },
+      systemPrompt: { value: "  Ты эксперт  " },
     });
     expect(settings).toEqual({
       mode: "full_auto",
       backendUrl: "http://x",
       backendToken: "tok",
       showOverlay: true,
+      modelPreference: "accurate",
+      systemPrompt: "Ты эксперт",
     });
   });
 
@@ -29,9 +33,13 @@ describe("readFormValues", () => {
       backendUrl: { value: "   " },
       backendToken: { value: "" },
       showOverlay: { checked: false },
+      modelPreference: { value: "fast" },
+      systemPrompt: { value: "" },
     });
     expect(settings.backendUrl).toBe(DEFAULT_SETTINGS.backendUrl);
     expect(settings.showOverlay).toBe(false);
+    expect(settings.modelPreference).toBe("fast");
+    expect(settings.systemPrompt).toBe("");
   });
 });
 

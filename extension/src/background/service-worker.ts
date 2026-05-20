@@ -101,8 +101,14 @@ async function handleMessage(msg: SwMessage): Promise<unknown> {
       return { sessionId: stored["activeSessionId"] ?? null };
     }
     case "backend:answer": {
+      const settings = await loadSettings(DEFAULT_SETTINGS);
+      const fullReq: AnswerRequest = {
+        ...msg.req,
+        model_preference: settings.modelPreference,
+        system_prompt: settings.systemPrompt || null,
+      };
       const client = await makeClient();
-      const data = await client.answerQuestion(msg.req);
+      const data = await client.answerQuestion(fullReq);
       return { ok: true, data };
     }
     case "backend:start-session": {

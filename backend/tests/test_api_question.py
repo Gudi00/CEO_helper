@@ -35,7 +35,7 @@ class StubAI(AIProvider):
         self._raise = raise_exc
         self.calls = 0
 
-    async def answer(self, question):
+    async def answer(self, question, *, system_prompt=None):
         self.calls += 1
         if self._raise is not None:
             raise self._raise

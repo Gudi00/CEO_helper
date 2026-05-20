@@ -17,7 +17,7 @@ from src.ai.base import (
     ProviderUnavailable,
     RawAIResponse,
 )
-from src.ai.prompts import SYSTEM_PROMPT, render_user_prompt
+from src.ai.prompts import build_system_prompt, render_user_prompt
 from src.moodle.types import NormalizedQuestion
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -34,21 +34,31 @@ class OllamaProvider(AIProvider):
         model: str,
         timeout_s: float = 30.0,
         think: bool = False,
+        num_predict: int = 1024,
+        num_gpu: int = 99,
     ) -> None:
         self._client = AsyncClient(host=host)
         self._model = model
         self._timeout_s = timeout_s
         self._think = think
+        self._num_predict = num_predict
+        self._num_gpu = num_gpu
 
-    async def answer(self, question: NormalizedQuestion) -> AnswerResult:
+    async def answer(
+        self, question: NormalizedQuestion, *, system_prompt: str | None = None
+    ) -> AnswerResult:
         prompt = render_user_prompt(question)
         started = time.perf_counter()
 
         kwargs: dict[str, Any] = {
             "model": self._model,
-            "options": {"temperature": 0.1, "num_predict": 1024},
+            "options": {
+                "temperature": 0.1,
+                "num_predict": self._num_predict,
+                "num_gpu": self._num_gpu,
+            },
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt(system_prompt)},
                 {"role": "user", "content": prompt},
             ],
         }

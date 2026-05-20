@@ -52,7 +52,7 @@ async def answer_question(
 
     provider = _get_provider(request, req.model_preference)
     try:
-        result = await provider.answer(req.question)
+        result = await provider.answer(req.question, system_prompt=req.system_prompt)
     except InvalidResponse as exc:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,

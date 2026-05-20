@@ -33,11 +33,13 @@ class CascadeProvider:
             raise ValueError("CascadeProvider requires at least one provider")
         self._providers = list(providers)
 
-    async def answer(self, question: NormalizedQuestion) -> AnswerResult:
+    async def answer(
+        self, question: NormalizedQuestion, *, system_prompt: str | None = None
+    ) -> AnswerResult:
         last_err: AIProviderError | None = None
         for provider in self._providers:
             try:
-                return await provider.answer(question)
+                return await provider.answer(question, system_prompt=system_prompt)
             except _RECOVERABLE as exc:
                 logger.warning(
                     "provider %s failed with %s, falling back",

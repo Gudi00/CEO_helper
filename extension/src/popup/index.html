@@ -35,17 +35,44 @@
       .status--ok { background: #ecfdf5; color: #047857; }
       .status--err { background: #fef2f2; color: #b91c1c; }
       .small { font-size: 11px; color: #6b7280; }
+      textarea {
+        width: 100%; box-sizing: border-box;
+        padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+        font: inherit; resize: vertical; min-height: 80px;
+      }
+      details { margin: 10px 0 0; }
+      summary {
+        cursor: pointer; font-weight: 600; font-size: 12px;
+        color: #374151; user-select: none; padding: 4px 0;
+      }
+      summary:hover { color: #111827; }
+      .prompt-footer { display: flex; justify-content: flex-end; margin-top: 4px; }
+      .btn-sm {
+        padding: 3px 8px; font-size: 11px; border: 1px solid #d1d5db;
+        background: #f3f4f6; cursor: pointer; border-radius: 4px;
+      }
     </style>
   </head>
   <body>
     <h1>LMS Quiz Assistant</h1>
 
-    <label for="mode">Режим</label>
-    <select id="mode">
-      <option value="assist">Подсказчик</option>
-      <option value="step_by_step">Step-by-step</option>
-      <option value="full_auto">Full auto</option>
-    </select>
+    <div class="row">
+      <div>
+        <label for="mode">Режим</label>
+        <select id="mode">
+          <option value="assist">Подсказчик</option>
+          <option value="step_by_step">Step-by-step</option>
+          <option value="full_auto">Full auto</option>
+        </select>
+      </div>
+      <div>
+        <label for="model-preference">Модель</label>
+        <select id="model-preference">
+          <option value="accurate">Точная (deepseek-r1)</option>
+          <option value="fast">Быстрая (qwen2.5)</option>
+        </select>
+      </div>
+    </div>
 
     <label for="cmid">cmid (id теста)</label>
     <input id="cmid" placeholder="например 305095" />
@@ -59,6 +86,17 @@
     <label class="small">
       <input type="checkbox" id="show-overlay" /> Показывать подсветку в DOM
     </label>
+
+    <details>
+      <summary>Системный промт (необязательно)</summary>
+      <textarea
+        id="system-prompt"
+        placeholder="Оставь пустым — будет технический промт по умолчанию.&#10;&#10;Пример для истории:&#10;Ты — эксперт по истории Беларуси. Отвечай строго по белорусской историографии и учебной программе БГУИР."
+      ></textarea>
+      <div class="prompt-footer">
+        <button id="prompt-reset" class="btn-sm" type="button">Сбросить к умолчанию</button>
+      </div>
+    </details>
 
     <div class="row" style="margin-top: 12px">
       <button id="start" class="btn-primary" type="button">Старт</button>

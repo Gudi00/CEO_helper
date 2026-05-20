@@ -48,6 +48,7 @@ class AnswerRequest(BaseModel):
     question: NormalizedQuestion
     use_cache: bool = True
     model_preference: ModelPreference = "accurate"
+    system_prompt: str | None = None
 
 
 class FeedbackRequest(BaseModel):

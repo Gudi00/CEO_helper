@@ -49,8 +49,10 @@ def _build_ai_providers() -> dict[str, AIProvider]:
         result["accurate"] = OllamaProvider(
             host=settings.ollama_host,
             model=settings.ollama_model_accurate,
-            timeout_s=90.0,
+            timeout_s=120.0,
             think=True,
+            num_predict=4096,
+            num_gpu=99,
         )
 
     return result

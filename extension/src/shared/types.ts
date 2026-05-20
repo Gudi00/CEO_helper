@@ -62,10 +62,14 @@ export interface StartSessionResponse {
   ws_url: string;
 }
 
+export type ModelPreference = "fast" | "accurate";
+
 export interface AnswerRequest {
   session_id: string;
   question: NormalizedQuestion;
   use_cache?: boolean;
+  model_preference?: ModelPreference;
+  system_prompt?: string | null;
 }
 
 export interface SessionState {
@@ -100,6 +104,8 @@ export interface ExtensionSettings {
   backendToken: string;
   mode: ExecutionMode;
   showOverlay: boolean;
+  modelPreference: ModelPreference;
+  systemPrompt: string; // empty string = use backend default
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -107,4 +113,6 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   backendToken: "",
   mode: "assist",
   showOverlay: true,
+  modelPreference: "accurate",
+  systemPrompt: "",
 };

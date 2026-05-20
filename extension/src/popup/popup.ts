@@ -16,6 +16,9 @@ interface PopupRefs {
   backendUrl: HTMLInputElement;
   backendToken: HTMLInputElement;
   showOverlay: HTMLInputElement;
+  modelPreference: HTMLSelectElement;
+  systemPrompt: HTMLTextAreaElement;
+  promptReset: HTMLButtonElement;
   start: HTMLButtonElement;
   stop: HTMLButtonElement;
   status: HTMLDivElement;
@@ -28,6 +31,9 @@ function refs(): PopupRefs {
     backendUrl: $<HTMLInputElement>("backend-url"),
     backendToken: $<HTMLInputElement>("backend-token"),
     showOverlay: $<HTMLInputElement>("show-overlay"),
+    modelPreference: $<HTMLSelectElement>("model-preference"),
+    systemPrompt: $<HTMLTextAreaElement>("system-prompt"),
+    promptReset: $<HTMLButtonElement>("prompt-reset"),
     start: $<HTMLButtonElement>("start"),
     stop: $<HTMLButtonElement>("stop"),
     status: $<HTMLDivElement>("status"),
@@ -39,6 +45,8 @@ function populate(refs: PopupRefs, settings: ExtensionSettings): void {
   refs.backendUrl.value = settings.backendUrl;
   refs.backendToken.value = settings.backendToken;
   refs.showOverlay.checked = settings.showOverlay;
+  refs.modelPreference.value = settings.modelPreference;
+  refs.systemPrompt.value = settings.systemPrompt;
 }
 
 async function checkHealth(client: BackendClient, status: HTMLDivElement): Promise<void> {
@@ -126,6 +134,10 @@ async function bootstrap(): Promise<void> {
 
   r.start.addEventListener("click", () => void onStart(r));
   r.stop.addEventListener("click", () => void onStop(r));
+  r.promptReset.addEventListener("click", () => {
+    r.systemPrompt.value = "";
+    void saveSettings({ systemPrompt: "" });
+  });
 
   // React to other popup instances / SW updating storage live.
   chrome.storage.onChanged.addListener((changes, area) => {

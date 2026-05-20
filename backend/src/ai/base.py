@@ -53,4 +53,6 @@ class InvalidResponse(AIProviderError):
 class AIProvider(Protocol):
     name: str
 
-    async def answer(self, question: NormalizedQuestion) -> AnswerResult: ...
+    async def answer(
+        self, question: NormalizedQuestion, *, system_prompt: str | None = None
+    ) -> AnswerResult: ...

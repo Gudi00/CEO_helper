@@ -4,7 +4,7 @@
  * chrome.* runtime).
  */
 
-import type { ExecutionMode, ExtensionSettings } from "@/shared/types.js";
+import type { ExecutionMode, ExtensionSettings, ModelPreference } from "@/shared/types.js";
 import { DEFAULT_SETTINGS } from "@/shared/types.js";
 
 export interface PopupFormFields {
@@ -12,6 +12,8 @@ export interface PopupFormFields {
   backendUrl: string;
   backendToken: string;
   showOverlay: boolean;
+  modelPreference: ModelPreference;
+  systemPrompt: string;
 }
 
 export function readFormValues(fields: {
@@ -19,12 +21,16 @@ export function readFormValues(fields: {
   backendUrl: { value: string };
   backendToken: { value: string };
   showOverlay: { checked: boolean };
+  modelPreference: { value: string };
+  systemPrompt: { value: string };
 }): ExtensionSettings {
   return {
     mode: fields.mode.value as ExecutionMode,
     backendUrl: fields.backendUrl.value.trim() || DEFAULT_SETTINGS.backendUrl,
     backendToken: fields.backendToken.value.trim(),
     showOverlay: fields.showOverlay.checked,
+    modelPreference: fields.modelPreference.value as ModelPreference,
+    systemPrompt: fields.systemPrompt.value.trim(),
   };
 }
 

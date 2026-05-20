@@ -17,7 +17,7 @@ from src.ai.base import (
     QuotaExceeded,
     RawAIResponse,
 )
-from src.ai.prompts import SYSTEM_PROMPT, render_user_prompt
+from src.ai.prompts import build_system_prompt, render_user_prompt
 from src.moodle.types import NormalizedQuestion
 
 
@@ -33,22 +33,33 @@ class GeminiProvider(AIProvider):
         self._model_name = model
         self._timeout_s = timeout_s
         self._config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=build_system_prompt(None),
             temperature=0.1,
             max_output_tokens=1024,
             top_p=0.95,
             response_mime_type="application/json",
         )
 
-    async def answer(self, question: NormalizedQuestion) -> AnswerResult:
+    async def answer(
+        self, question: NormalizedQuestion, *, system_prompt: str | None = None
+    ) -> AnswerResult:
         prompt = render_user_prompt(question)
         started = time.perf_counter()
+        config = self._config
+        if system_prompt:
+            config = types.GenerateContentConfig(
+                system_instruction=build_system_prompt(system_prompt),
+                temperature=0.1,
+                max_output_tokens=1024,
+                top_p=0.95,
+                response_mime_type="application/json",
+            )
         try:
             response = await asyncio.wait_for(
                 self._client.aio.models.generate_content(
                     model=self._model_name,
                     contents=prompt,
-                    config=self._config,
+                    config=config,
                 ),
                 timeout=self._timeout_s,
             )

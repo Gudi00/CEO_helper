@@ -1,6 +1,21 @@
 from src.moodle.types import NormalizedQuestion
 
-SYSTEM_PROMPT = """\
+# Appended to every system prompt (default or custom) — the model MUST see
+# this regardless of what the user writes, otherwise JSON parsing breaks.
+JSON_FORMAT_INSTRUCTION = """\
+Отвечай СТРОГО в формате JSON, БЕЗ markdown, БЕЗ преамбулы:
+{
+  "answer_indices": [<список 0-based индексов>],
+  "confidence": <float 0..1>,
+  "reasoning": "<краткое — до 200 символов — обоснование>"
+}
+
+Для single_choice — answer_indices содержит ровно один индекс.
+Для multiple_choice — один или несколько.
+confidence: 0.95+ абсолютно уверен · 0.75-0.94 уверен · 0.5-0.74 сомнения · <0.5 не угадывай.\
+"""
+
+_DEFAULT_ROLE = """\
 Ты — преподаватель технического вуза (информатика, программирование,
 электроника, сети). Помогаешь студенту проверить ответ на тесте.
 
@@ -12,24 +27,16 @@ SYSTEM_PROMPT = """\
   5. Если хотя бы 2 варианта выглядят правдоподобно — confidence ≤ 0.7.
   6. Если вопрос содержит конструкцию "1) X 2) Y" внутри варианта
      (matrix-формат), он спрашивает совокупность утверждений в порядке —
-     не путай с нумерацией вариантов.
-
-Отвечай СТРОГО в формате JSON, БЕЗ markdown, БЕЗ pre-amble:
-{
-  "answer_indices": [<list of 0-based indices>],
-  "confidence": <float 0..1>,
-  "reasoning": "<краткое — до 200 символов — обоснование выбора>"
-}
-
-Для single_choice — answer_indices содержит ровно один индекс.
-Для multiple_choice — один или несколько.
-confidence:
-  0.95+  — абсолютно уверен (фактический вопрос с одним правильным ответом)
-  0.75-0.94 — уверен, но не на 100% (специфическая деталь)
-  0.50-0.74 — рискованный выбор, есть сомнения
-  < 0.5   — не угадывай; верни самый правдоподобный, но честно низкий
-            confidence — пользователь сам решит, верить или нет.\
+     не путай с нумерацией вариантов.\
 """
+
+SYSTEM_PROMPT = _DEFAULT_ROLE + "\n\n" + JSON_FORMAT_INSTRUCTION
+
+
+def build_system_prompt(custom: str | None) -> str:
+    """Return effective system prompt: custom role + mandatory JSON block."""
+    role = custom.strip() if custom and custom.strip() else _DEFAULT_ROLE
+    return role + "\n\n" + JSON_FORMAT_INSTRUCTION
 
 
 def render_user_prompt(q: NormalizedQuestion) -> str:
