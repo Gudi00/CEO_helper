@@ -1,0 +1,37 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8765:8765"
+    volumes:
+      - lms-data:/data
+    env_file:
+      - ./backend/.env
+    environment:
+      BACKEND_HOST: "0.0.0.0"
+      DATABASE_URL: "sqlite+aiosqlite:////data/quiz.db"
+      TOKEN_FILE: "/data/token"
+    restart: unless-stopped
+
+  # Локальная LLM через Ollama (опционально — раскомментировать при необходимости)
+  # ollama:
+  #   image: ollama/ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-models:/root/.ollama
+  #   restart: unless-stopped
+
+  # Сборка расширения без локального Node.js
+  extension-builder:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./extension:/app
+    command: sh -c "npm ci && npm run build"
+    profiles:
+      - build
+
+volumes:
+  lms-data:
+  # ollama-models:
