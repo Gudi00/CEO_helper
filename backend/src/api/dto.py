@@ -40,10 +40,14 @@ class SessionStateDTO(BaseModel):
     max_score: int | None = None
 
 
+ModelPreference = Literal["fast", "accurate"]
+
+
 class AnswerRequest(BaseModel):
     session_id: UUID
     question: NormalizedQuestion
     use_cache: bool = True
+    model_preference: ModelPreference = "accurate"
 
 
 class FeedbackRequest(BaseModel):

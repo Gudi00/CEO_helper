@@ -26,14 +26,15 @@ CACHE_TTL = timedelta(days=30)
 CACHE_MIN_CONFIDENCE = 0.7
 
 
-def _get_provider(request: Request) -> AIProvider:
-    provider = request.app.state.ai_provider
+def _get_provider(request: Request, preference: str = "accurate") -> AIProvider:
+    providers: dict[str, AIProvider] = getattr(request.app.state, "ai_providers", {})
+    provider = providers.get(preference) or providers.get("fast") or request.app.state.ai_provider
     if provider is None:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
                 "code": "AI_NOT_CONFIGURED",
-                "message": "Set GEMINI_API_KEY",
+                "message": "Set GEMINI_API_KEY or enable OLLAMA",
             },
         )
     return provider  # type: ignore[no-any-return]
@@ -49,7 +50,7 @@ async def answer_question(
             await _broadcast_answer(req, cached)
             return cached
 
-    provider = _get_provider(request)
+    provider = _get_provider(request, req.model_preference)
     try:
         result = await provider.answer(req.question)
     except InvalidResponse as exc:

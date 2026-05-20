@@ -235,3 +235,42 @@ async def test_ollama_passes_format_and_options_to_client():
     assert captured["options"]["num_predict"] == 1024
     roles = [m["role"] for m in captured["messages"]]
     assert roles == ["system", "user"]
+
+
+@pytest.mark.asyncio
+async def test_ollama_think_mode_omits_format_json():
+    captured: dict[str, Any] = {}
+
+    async def chat(**kwargs: Any) -> Any:
+        captured.update(kwargs)
+        return _dict_response('{"answer_indices":[0],"confidence":0.9}')
+
+    provider = OllamaProvider(
+        host="http://localhost:11434", model="deepseek-r1:7b",
+        timeout_s=1.0, think=True,
+    )
+    _install_chat(provider, chat)
+    await provider.answer(_question())
+
+    assert "format" not in captured
+
+
+@pytest.mark.asyncio
+async def test_ollama_think_mode_strips_think_tags():
+    response_with_think = (
+        "<think>Let me reason step by step...</think>"
+        '{"answer_indices":[1],"confidence":0.92,"reasoning":"TCP гарантирует доставку"}'
+    )
+
+    async def chat(**kwargs: Any) -> Any:
+        return _dict_response(response_with_think)
+
+    provider = OllamaProvider(
+        host="http://localhost:11434", model="deepseek-r1:7b",
+        timeout_s=1.0, think=True,
+    )
+    _install_chat(provider, chat)
+    result = await provider.answer(_question(n_options=3))
+
+    assert result.answer_indices == [1]
+    assert result.confidence == pytest.approx(0.92)

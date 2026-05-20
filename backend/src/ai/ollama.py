@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from typing import Any
 
@@ -19,29 +20,44 @@ from src.ai.base import (
 from src.ai.prompts import SYSTEM_PROMPT, render_user_prompt
 from src.moodle.types import NormalizedQuestion
 
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+_JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
+
 
 class OllamaProvider(AIProvider):
     name = "ollama"
 
-    def __init__(self, *, host: str, model: str, timeout_s: float = 30.0) -> None:
+    def __init__(
+        self,
+        *,
+        host: str,
+        model: str,
+        timeout_s: float = 30.0,
+        think: bool = False,
+    ) -> None:
         self._client = AsyncClient(host=host)
         self._model = model
         self._timeout_s = timeout_s
+        self._think = think
 
     async def answer(self, question: NormalizedQuestion) -> AnswerResult:
         prompt = render_user_prompt(question)
         started = time.perf_counter()
+
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "options": {"temperature": 0.1, "num_predict": 1024},
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        if not self._think:
+            kwargs["format"] = "json"
+
         try:
             response: Any = await asyncio.wait_for(
-                self._client.chat(
-                    model=self._model,
-                    format="json",
-                    options={"temperature": 0.1, "num_predict": 1024},
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                ),
+                self._client.chat(**kwargs),
                 timeout=self._timeout_s,
             )
         except TimeoutError as exc:
@@ -70,8 +86,14 @@ class OllamaProvider(AIProvider):
     def _parse_and_validate(
         raw_text: str, question: NormalizedQuestion
     ) -> RawAIResponse:
+        # Strip <think>...</think> blocks emitted by reasoning models (e.g. deepseek-r1)
+        cleaned = _THINK_RE.sub("", raw_text).strip()
+        # If no JSON object found in cleaned text, fall back to raw
+        m = _JSON_OBJ_RE.search(cleaned)
+        json_text = m.group(0) if m else cleaned
+
         try:
-            data = json.loads(raw_text)
+            data = json.loads(json_text)
             parsed = RawAIResponse(**data)
         except (json.JSONDecodeError, ValidationError, TypeError) as exc:
             raise InvalidResponse(f"Bad JSON from Ollama: {raw_text[:120]!r}") from exc

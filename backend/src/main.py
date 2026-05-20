@@ -23,31 +23,44 @@ from src.config import get_settings
 from src.persistence.db import init_db
 
 
-def _build_ai_provider() -> AIProvider | None:
+def _build_ai_providers() -> dict[str, AIProvider]:
+    """Build named providers: 'fast' (cascade Gemini→Ollama) and 'accurate' (local thinking model)."""
     settings = get_settings()
-    providers: list[AIProvider] = []
+    result: dict[str, AIProvider] = {}
 
+    fast_chain: list[AIProvider] = []
     if settings.gemini_api_key:
-        providers.append(
+        fast_chain.append(
             GeminiProvider(
                 api_key=settings.gemini_api_key,
                 model=settings.gemini_model,
                 timeout_s=settings.gemini_timeout_s,
             )
         )
-
     if settings.ollama_enabled:
-        providers.append(
-            OllamaProvider(
-                host=settings.ollama_host, model=settings.ollama_model
-            )
+        fast_chain.append(
+            OllamaProvider(host=settings.ollama_host, model=settings.ollama_model)
         )
 
+    if fast_chain:
+        result["fast"] = fast_chain[0] if len(fast_chain) == 1 else CascadeProvider(fast_chain)
+
+    if settings.ollama_enabled and settings.ollama_model_accurate:
+        result["accurate"] = OllamaProvider(
+            host=settings.ollama_host,
+            model=settings.ollama_model_accurate,
+            timeout_s=90.0,
+            think=True,
+        )
+
+    return result
+
+
+def _build_ai_provider() -> AIProvider | None:
+    providers = _build_ai_providers()
     if not providers:
         return None
-    if len(providers) == 1:
-        return providers[0]
-    return CascadeProvider(providers)
+    return providers.get("accurate") or next(iter(providers.values()))
 
 
 async def _default_browser_factory(
@@ -93,6 +106,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     get_settings().ensure_token()
 
     # Tests may pre-populate these on app.state before entering the lifespan.
+    if not hasattr(app.state, "ai_providers"):
+        app.state.ai_providers = _build_ai_providers()
     if not hasattr(app.state, "ai_provider"):
         app.state.ai_provider = _build_ai_provider()
     if not hasattr(app.state, "engine_manager"):

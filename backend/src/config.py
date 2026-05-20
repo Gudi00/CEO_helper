@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     ollama_enabled: bool = False
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "gemma3:4b"
+    ollama_model_accurate: str = "deepseek-r1:7b"
 
     backend_host: str = "127.0.0.1"
     backend_port: int = 8765
