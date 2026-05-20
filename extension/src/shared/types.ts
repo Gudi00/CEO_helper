@@ -5,7 +5,7 @@
  * JSON round-trips without transformation.
  */
 
-export type ExecutionMode = "assist" | "full_auto" | "step_by_step";
+export type ExecutionMode = "assist" | "full_auto" | "step_by_step" | "stealth";
 
 export type AccessStrategy =
   | "extension_native"
@@ -99,6 +99,12 @@ export type WSEvent =
 
 // --- Storage shape (chrome.storage.local) ---
 
+export interface StealthDotSettings {
+  diameter: number; // px, default 10
+  offsetX: number;  // px horizontal shift from natural position
+  offsetY: number;  // px vertical shift (margin-top) from label
+}
+
 export interface ExtensionSettings {
   backendUrl: string; // "http://127.0.0.1:8765"
   backendToken: string;
@@ -106,6 +112,7 @@ export interface ExtensionSettings {
   showOverlay: boolean;
   modelPreference: ModelPreference;
   systemPrompt: string; // empty string = use backend default
+  stealthDot: StealthDotSettings;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -115,4 +122,5 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   showOverlay: true,
   modelPreference: "accurate",
   systemPrompt: "",
+  stealthDot: { diameter: 10, offsetX: 0, offsetY: 0 },
 };

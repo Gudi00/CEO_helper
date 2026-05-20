@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   dispatchClick,
   highlight,
+  highlightDots,
   injectStylesOnce,
   showInlineBadge,
   showStepPrompt,
@@ -282,6 +283,54 @@ describe("showInlineBadge", () => {
     const badge = q.querySelector(".lms-tool-badge")!;
     expect(badge.innerHTML).not.toContain("<img");
     expect(badge.textContent).toContain("<img onerror=alert>");
+  });
+});
+
+describe("highlightDots", () => {
+  it("inserts a dot after the correct label", () => {
+    const q = mountQuestion();
+    highlightDots(q, answer({ answer_indices: [1] }));
+    const dots = q.querySelectorAll("[data-lms-dot]");
+    expect(dots).toHaveLength(1);
+    const labels = q.querySelectorAll("label");
+    expect(labels[1]!.nextElementSibling?.getAttribute("data-lms-dot")).toBe("1");
+  });
+
+  it("respects custom diameter and offsets", () => {
+    const q = mountQuestion();
+    highlightDots(q, answer({ answer_indices: [0] }), { diameter: 20, offsetX: 5, offsetY: 3 });
+    const dot = q.querySelector<HTMLElement>("[data-lms-dot]")!;
+    expect(dot.style.width).toBe("20px");
+    expect(dot.style.height).toBe("20px");
+    expect(dot.style.marginLeft).toBe("5px");
+    expect(dot.style.marginTop).toBe("3px");
+  });
+
+  it("places a dot for every correct index", () => {
+    const q = mountQuestion();
+    highlightDots(q, answer({ answer_indices: [0, 1] }));
+    expect(q.querySelectorAll("[data-lms-dot]")).toHaveLength(2);
+  });
+
+  it("returns cleanup that removes all dots", () => {
+    const q = mountQuestion();
+    const cleanup = highlightDots(q, answer({ answer_indices: [0, 1] }));
+    cleanup();
+    expect(q.querySelectorAll("[data-lms-dot]")).toHaveLength(0);
+  });
+
+  it("ignores missing option indices without throwing", () => {
+    const q = mountQuestion();
+    expect(() => highlightDots(q, answer({ answer_indices: [99] }))).not.toThrow();
+    expect(q.querySelectorAll("[data-lms-dot]")).toHaveLength(0);
+  });
+
+  it("does not insert badge or outline — no side-effects on label attributes", () => {
+    const q = mountQuestion();
+    highlightDots(q, answer({ answer_indices: [0] }));
+    expect(q.querySelector(".lms-tool-badge")).toBeNull();
+    const label = q.querySelectorAll("label")[0]!;
+    expect(label.getAttribute("data-lms-tool")).toBeNull();
   });
 });
 

@@ -27,6 +27,7 @@ import { parseOne } from "./moodle-parser.js";
 import {
   dispatchClick,
   highlight,
+  highlightDots,
   injectStylesOnce,
   showStepPrompt,
   showToast,
@@ -133,6 +134,9 @@ async function answerAndAct(
       // script just records the suggestion for visibility.
       if (ctx.settings.showOverlay) highlight(container, result);
       return;
+    case "stealth":
+      highlightDots(container, result, ctx.settings.stealthDot);
+      return;
   }
 }
 
@@ -197,6 +201,9 @@ async function bootstrap(): Promise<void> {
     }
     if ("showOverlay" in changes) {
       ctx.settings.showOverlay = Boolean(changes.showOverlay.newValue);
+    }
+    if ("stealthDot" in changes) {
+      ctx.settings.stealthDot = changes.stealthDot.newValue as typeof ctx.settings.stealthDot;
     }
     if (needsReprocess && ctx.sessionId) processAllQuestions(ctx);
   });

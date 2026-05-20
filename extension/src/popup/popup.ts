@@ -22,6 +22,10 @@ interface PopupRefs {
   start: HTMLButtonElement;
   stop: HTMLButtonElement;
   status: HTMLDivElement;
+  dotDiameter: HTMLInputElement;
+  dotOffsetX: HTMLInputElement;
+  dotOffsetY: HTMLInputElement;
+  stealthPanel: HTMLDivElement;
 }
 
 function refs(): PopupRefs {
@@ -37,7 +41,15 @@ function refs(): PopupRefs {
     start: $<HTMLButtonElement>("start"),
     stop: $<HTMLButtonElement>("stop"),
     status: $<HTMLDivElement>("status"),
+    dotDiameter: $<HTMLInputElement>("dot-diameter"),
+    dotOffsetX: $<HTMLInputElement>("dot-offset-x"),
+    dotOffsetY: $<HTMLInputElement>("dot-offset-y"),
+    stealthPanel: $<HTMLDivElement>("stealth-panel"),
   };
+}
+
+function syncStealthPanel(refs: PopupRefs): void {
+  refs.stealthPanel.style.display = refs.mode.value === "stealth" ? "block" : "none";
 }
 
 function populate(refs: PopupRefs, settings: ExtensionSettings): void {
@@ -47,6 +59,10 @@ function populate(refs: PopupRefs, settings: ExtensionSettings): void {
   refs.showOverlay.checked = settings.showOverlay;
   refs.modelPreference.value = settings.modelPreference;
   refs.systemPrompt.value = settings.systemPrompt;
+  refs.dotDiameter.value = String(settings.stealthDot.diameter);
+  refs.dotOffsetX.value = String(settings.stealthDot.offsetX);
+  refs.dotOffsetY.value = String(settings.stealthDot.offsetY);
+  syncStealthPanel(refs);
 }
 
 async function checkHealth(client: BackendClient, status: HTMLDivElement): Promise<void> {
@@ -132,6 +148,7 @@ async function bootstrap(): Promise<void> {
     void checkHealth(client, r.status);
   }
 
+  r.mode.addEventListener("change", () => syncStealthPanel(r));
   r.start.addEventListener("click", () => void onStart(r));
   r.stop.addEventListener("click", () => void onStop(r));
   r.promptReset.addEventListener("click", () => {

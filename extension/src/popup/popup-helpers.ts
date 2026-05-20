@@ -7,6 +7,11 @@
 import type { ExecutionMode, ExtensionSettings, ModelPreference } from "@/shared/types.js";
 import { DEFAULT_SETTINGS } from "@/shared/types.js";
 
+function parsePx(s: string, fallback: number): number {
+  const n = parseInt(s, 10);
+  return Number.isNaN(n) ? fallback : n;
+}
+
 export interface PopupFormFields {
   mode: ExecutionMode;
   backendUrl: string;
@@ -14,6 +19,9 @@ export interface PopupFormFields {
   showOverlay: boolean;
   modelPreference: ModelPreference;
   systemPrompt: string;
+  dotDiameter: string;
+  dotOffsetX: string;
+  dotOffsetY: string;
 }
 
 export function readFormValues(fields: {
@@ -23,6 +31,9 @@ export function readFormValues(fields: {
   showOverlay: { checked: boolean };
   modelPreference: { value: string };
   systemPrompt: { value: string };
+  dotDiameter: { value: string };
+  dotOffsetX: { value: string };
+  dotOffsetY: { value: string };
 }): ExtensionSettings {
   return {
     mode: fields.mode.value as ExecutionMode,
@@ -31,6 +42,11 @@ export function readFormValues(fields: {
     showOverlay: fields.showOverlay.checked,
     modelPreference: fields.modelPreference.value as ModelPreference,
     systemPrompt: fields.systemPrompt.value.trim(),
+    stealthDot: {
+      diameter: Math.max(1, parsePx(fields.dotDiameter.value, DEFAULT_SETTINGS.stealthDot.diameter)),
+      offsetX: parsePx(fields.dotOffsetX.value, 0),
+      offsetY: parsePx(fields.dotOffsetY.value, 0),
+    },
   };
 }
 

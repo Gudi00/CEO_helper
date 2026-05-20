@@ -61,6 +61,7 @@
         <label for="mode">Режим</label>
         <select id="mode">
           <option value="assist">Подсказчик</option>
+          <option value="stealth">Скрытый (точки)</option>
           <option value="step_by_step">Step-by-step</option>
           <option value="full_auto">Full auto</option>
         </select>
@@ -71,6 +72,24 @@
           <option value="accurate">Точная (deepseek-r1)</option>
           <option value="fast">Быстрая (qwen2.5)</option>
         </select>
+      </div>
+    </div>
+
+    <div id="stealth-panel" style="display:none;margin-top:8px;padding:8px;border:1px solid #e5e7eb;border-radius:4px;background:#f9fafb;">
+      <div class="small" style="font-weight:600;margin-bottom:6px;">Настройки точки</div>
+      <div class="row">
+        <div>
+          <label for="dot-diameter">Диаметр (px)</label>
+          <input type="number" id="dot-diameter" value="10" min="1" max="100" />
+        </div>
+        <div>
+          <label for="dot-offset-x">Смещение X (px)</label>
+          <input type="number" id="dot-offset-x" value="0" />
+        </div>
+      </div>
+      <div style="margin-top:4px;">
+        <label for="dot-offset-y">Смещение Y (px)</label>
+        <input type="number" id="dot-offset-y" value="0" />
       </div>
     </div>
 

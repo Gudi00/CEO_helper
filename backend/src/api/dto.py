@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from src.ai.base import AnswerResult
 from src.moodle.types import NormalizedQuestion
 
-ExecutionMode = Literal["assist", "full_auto", "step_by_step"]
+ExecutionMode = Literal["assist", "full_auto", "step_by_step", "stealth"]
 AccessStrategy = Literal["extension_native", "cdp", "manual_login", "cookie_export"]
 SessionStatus = Literal["running", "completed", "aborted", "failed"]
 

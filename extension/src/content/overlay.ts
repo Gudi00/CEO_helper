@@ -212,6 +212,43 @@ export function showInlineBadge(
   return () => badge.remove();
 }
 
+export interface DotSettings {
+  diameter: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+/**
+ * Stealth mode: places a small black dot directly under each correct answer
+ * label. No badge, no outline — only a subtle positional marker.
+ * offsetX shifts the dot horizontally, offsetY adds vertical gap from label.
+ */
+export function highlightDots(
+  questionContainer: HTMLElement,
+  result: AnswerResult,
+  dot: DotSettings = { diameter: 10, offsetX: 0, offsetY: 0 },
+): () => void {
+  const placed: HTMLElement[] = [];
+  for (const idx of result.answer_indices) {
+    const label = findOptionLabel(questionContainer, idx);
+    if (!label) continue;
+    const el = label.ownerDocument.createElement("span");
+    el.setAttribute("data-lms-dot", "1");
+    el.style.cssText =
+      `display:block;` +
+      `width:${dot.diameter}px;` +
+      `height:${dot.diameter}px;` +
+      `border-radius:50%;` +
+      `background:#000;` +
+      `pointer-events:none;` +
+      `margin-top:${dot.offsetY}px;` +
+      `margin-left:${dot.offsetX}px;`;
+    label.insertAdjacentElement("afterend", el);
+    placed.push(el);
+  }
+  return () => placed.forEach((d) => d.remove());
+}
+
 export type StepDecision = "confirm" | "reject";
 
 /**
