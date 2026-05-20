@@ -1,0 +1,416 @@
+openapi: 3.1.0
+info:
+  title: LMS Quiz Automation — Backend API
+  version: 0.1.0
+  description: |
+    Локальный HTTP API между MV3-расширением и Python-бэкендом.
+    Базовый URL: http://127.0.0.1:8765
+
+    Все запросы требуют заголовок `X-Backend-Token` (см. ADR 0005).
+
+servers:
+  - url: http://127.0.0.1:8765
+    description: Localhost backend
+
+security:
+  - BackendToken: []
+
+paths:
+  /api/session/start:
+    post:
+      summary: Создать сессию (start of quiz attempt tracking)
+      operationId: startSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartSessionRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartSessionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/session/{session_id}:
+    get:
+      summary: Получить состояние сессии
+      operationId: getSession
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionState"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/session/{session_id}/stop:
+    post:
+      summary: Остановить сессию
+      operationId: stopSession
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Stopped
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/question/answer:
+    post:
+      summary: Получить AI-ответ на вопрос
+      operationId: answerQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnswerRequest"
+      responses:
+        "200":
+          description: Ответ AI
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnswerResult"
+        "503":
+          description: AI provider unavailable (Gemini quota / Ollama down)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/question/{question_hash}/cached:
+    get:
+      summary: Достать кешированный ответ (без вызова AI)
+      operationId: getCachedAnswer
+      parameters:
+        - name: question_hash
+          in: path
+          required: true
+          schema: { type: string, format: hex, minLength: 64, maxLength: 64 }
+      responses:
+        "200":
+          description: Найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnswerResult"
+        "404":
+          description: Не в кеше
+
+  /api/question/{question_hash}/feedback:
+    post:
+      summary: Отметить ответ как правильный/неправильный (для будущей тюнинг-логики)
+      operationId: submitFeedback
+      parameters:
+        - name: question_hash
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [was_correct]
+              properties:
+                was_correct: { type: boolean }
+                session_id: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Saved
+
+  /api/history:
+    get:
+      summary: Список попыток
+      operationId: listHistory
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 500 }
+        - name: cmid
+          in: query
+          schema: { type: string }
+          description: Фильтр по конкретному тесту
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttemptSummary"
+
+  /api/history/{attempt_id}:
+    get:
+      summary: Полная история попытки
+      operationId: getHistoryItem
+      parameters:
+        - name: attempt_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptDetail"
+
+  /api/engine/start:
+    post:
+      summary: Запустить engine для full_auto режима
+      operationId: startEngine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id, access_strategy]
+              properties:
+                session_id: { type: string, format: uuid }
+                access_strategy:
+                  type: string
+                  enum: [cdp, manual_login, cookie_export]
+                cdp_port: { type: integer, default: 9222 }
+      responses:
+        "202":
+          description: Engine started (asynchronous via WS)
+        "409":
+          description: Engine already running for this session
+
+  /api/engine/stop:
+    post:
+      summary: Остановить engine
+      operationId: stopEngine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Stopped
+
+  /api/health:
+    get:
+      summary: Health check
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  ai_provider_primary: { type: string }
+                  version: { type: string }
+
+components:
+  securitySchemes:
+    BackendToken:
+      type: apiKey
+      in: header
+      name: X-Backend-Token
+
+  parameters:
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Invalid request body
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    StartSessionRequest:
+      type: object
+      required: [mode, cmid]
+      properties:
+        mode: { $ref: "#/components/schemas/ExecutionMode" }
+        cmid:
+          type: string
+          description: Moodle course module id (id теста)
+          example: "305095"
+        access_strategy:
+          $ref: "#/components/schemas/AccessStrategy"
+        ai_provider_override:
+          type: string
+          description: Принудительный выбор провайдера; по умолчанию — gemini
+          example: "gemini-2.0-flash"
+
+    StartSessionResponse:
+      type: object
+      required: [session_id, ws_url]
+      properties:
+        session_id: { type: string, format: uuid }
+        ws_url:
+          type: string
+          example: "ws://127.0.0.1:8765/ws/{session_id}"
+
+    SessionState:
+      type: object
+      properties:
+        session_id: { type: string, format: uuid }
+        mode: { $ref: "#/components/schemas/ExecutionMode" }
+        status:
+          type: string
+          enum: [running, completed, aborted, failed]
+        cmid: { type: string }
+        attempt_id: { type: string, nullable: true }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time, nullable: true }
+        score: { type: integer, nullable: true }
+        max_score: { type: integer, nullable: true }
+
+    ExecutionMode:
+      type: string
+      enum: [assist, full_auto, step_by_step]
+
+    AccessStrategy:
+      type: string
+      enum: [extension_native, cdp, manual_login, cookie_export]
+      description: |
+        - `extension_native` — assist/step_by_step через расширение в реальном Chrome
+        - `cdp` — engine attach к Chrome через :9222
+        - `manual_login` — engine открывает свой Chromium, юзер логинится
+        - `cookie_export` — ext шлёт куки в backend (Phase 1.5+)
+
+    AnswerRequest:
+      type: object
+      required: [session_id, question]
+      properties:
+        session_id: { type: string, format: uuid }
+        question:
+          $ref: "#/components/schemas/NormalizedQuestion"
+        use_cache: { type: boolean, default: true }
+
+    NormalizedQuestion:
+      type: object
+      required: [id, hash, type, text, options, metadata]
+      properties:
+        id:
+          type: string
+          example: "q739284:1"
+        hash:
+          type: string
+          minLength: 64
+          maxLength: 64
+          description: SHA-256 от нормализованного содержимого
+        type:
+          type: string
+          enum: [single_choice, multiple_choice]
+        text: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            required: [index, value, text]
+            properties:
+              index: { type: integer, minimum: 0 }
+              value: { type: string, description: "value атрибут input для submit" }
+              text: { type: string }
+        metadata:
+          type: object
+          required: [page_number, attempt_id, cmid, has_images]
+          properties:
+            page_number: { type: integer, minimum: 0 }
+            attempt_id: { type: string }
+            cmid: { type: string }
+            has_images: { type: boolean }
+
+    AnswerResult:
+      type: object
+      required: [answer_indices, confidence, provider, from_cache]
+      properties:
+        answer_indices:
+          type: array
+          items: { type: integer, minimum: 0 }
+          description: Индексы выбранных вариантов (для single — длина 1)
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reasoning:
+          type: string
+          nullable: true
+          description: Объяснение AI (для UI tooltip)
+        provider:
+          type: string
+          example: "gemini-2.0-flash"
+        from_cache: { type: boolean }
+        latency_ms: { type: integer, nullable: true }
+
+    AttemptSummary:
+      type: object
+      properties:
+        session_id: { type: string, format: uuid }
+        cmid: { type: string }
+        mode: { $ref: "#/components/schemas/ExecutionMode" }
+        score: { type: integer, nullable: true }
+        max_score: { type: integer, nullable: true }
+        started_at: { type: string, format: date-time }
+        duration_s: { type: integer, nullable: true }
+        status:
+          type: string
+          enum: [running, completed, aborted, failed]
+
+    AttemptDetail:
+      allOf:
+        - $ref: "#/components/schemas/AttemptSummary"
+        - type: object
+          properties:
+            answers:
+              type: array
+              items:
+                type: object
+                properties:
+                  question_text: { type: string }
+                  options_text: { type: array, items: { type: string } }
+                  ai_answer_indices: { type: array, items: { type: integer } }
+                  confidence: { type: number }
+                  reasoning: { type: string, nullable: true }
+                  provider: { type: string }
+                  from_cache: { type: boolean }
+                  was_correct: { type: boolean, nullable: true }
+                  created_at: { type: string, format: date-time }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true

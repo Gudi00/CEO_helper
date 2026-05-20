@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "LMS Quiz Assistant",
+  "version": "0.1.0",
+  "description": "Assist + step-by-step + full-auto for Moodle quizzes (lms.bsuir.by)",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://lms.bsuir.by/*",
+    "http://127.0.0.1:8765/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://lms.bsuir.by/mod/quiz/*"],
+      "js": ["src/content/content.ts"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "LMS Quiz Assistant"
+  }
+}
