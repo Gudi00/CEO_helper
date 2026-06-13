@@ -1,0 +1,30 @@
+name: google_form_app
+description: "On-device AI assistant for Google Forms quizzes (Gemini-powered)."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_inappwebview: ^6.1.5
+  flutter_gemma: ^0.16.4
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.2
+  sqflite: ^2.4.1
+  path: ^1.9.0
+  crypto: ^3.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/js/parser.js
+    - assets/js/apply.js

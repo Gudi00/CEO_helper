@@ -1,0 +1,22 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+*.iml
+
+# Generated native folders (recreate with `flutter create .`)
+# Keep these if you add platform-specific config you want versioned.
+/android/
+/ios/
+/linux/
+/macos/
+/windows/
+/web/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

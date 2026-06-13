@@ -43,6 +43,16 @@ extension/.vite/
 *.swp
 .DS_Store
 
+# Локальные настройки агентов
+.claude/
+
+# Flutter (google_form_app)
+google_form_app/build/
+google_form_app/.dart_tool/
+google_form_app/.flutter-plugins-dependencies
+google_form_app/.metadata
+**/*.iml
+
 # Logs
 *.log
 logs/
