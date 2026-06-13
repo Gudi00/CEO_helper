@@ -56,3 +56,9 @@ google_form_app/.metadata
 # Logs
 *.log
 logs/
+
+# AI-ассистенты (Gemini CLI, Claude Code и пр.) — не пушим артефакты/креды
+.gemini/
+.claude/
+.cursor/
+.aider*
