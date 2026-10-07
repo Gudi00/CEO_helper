@@ -69,7 +69,7 @@ export async function parseOne(
   if (!qtext) {
     throw new MoodleParseError(`No .qtext in question ${idAttr}`);
   }
-  const text = cleanText(qtext.textContent ?? "");
+  const text = cleanText(readableText(qtext));
   if (!text) {
     throw new MoodleParseError(`Empty .qtext in question ${idAttr}`);
   }
@@ -123,7 +123,7 @@ function extractOptions(container: HTMLElement): Option[] {
     );
     if (!input) return;
     const label = row.querySelector("label");
-    const raw = (label ?? row).textContent ?? "";
+    const raw = readableText(label ?? row);
     const text = stripAnswernumber(cleanText(raw));
     if (!text) return;
     out.push({
@@ -133,6 +133,34 @@ function extractOptions(container: HTMLElement): Option[] {
     });
   });
   return out;
+}
+
+const MATH_RENDER_SELECTOR =
+  ".MathJax, .MathJax_Preview, .MathJax_Display, .MJX_Assistive_MathML, mjx-container";
+
+/**
+ * Text of a node with formulas kept as source instead of rendering debris:
+ * a TeX-filter image becomes `[alt]`, a MathJax `<script type="math/tex">`
+ * becomes `$tex$`, and MathJax's rendered spans are dropped.
+ * Must stay in step with `_readable_text` in backend/src/moodle/parser.py.
+ */
+export function readableText(node: Element): string {
+  const clone = node.cloneNode(true) as Element;
+  const doc = node.ownerDocument;
+  clone.querySelectorAll("mjx-container").forEach((el) => {
+    const tex = el.querySelector('annotation[encoding="application/x-tex"]');
+    if (tex?.textContent) el.before(doc.createTextNode(` $${tex.textContent.trim()}$ `));
+  });
+  clone.querySelectorAll(MATH_RENDER_SELECTOR).forEach((el) => el.remove());
+  clone.querySelectorAll('script[type^="math/tex"]').forEach((el) => {
+    el.replaceWith(doc.createTextNode(` $${(el.textContent ?? "").trim()}$ `));
+  });
+  clone.querySelectorAll("script, style").forEach((el) => el.remove());
+  clone.querySelectorAll("img").forEach((img) => {
+    const alt = (img.getAttribute("alt") ?? "").trim();
+    img.replaceWith(doc.createTextNode(alt ? ` [${alt}] ` : " "));
+  });
+  return clone.textContent ?? "";
 }
 
 function cleanText(s: string): string {

@@ -16,6 +16,10 @@ from tests.fake_browser import FakeBrowser
 FIXTURES = Path(__file__).parent / "fixtures" / "moodle"
 
 
+async def _discard(_session_id: object, _message: object) -> None:
+    return None
+
+
 def _fx(name: str) -> str:
     return (FIXTURES / name).read_text(encoding="utf-8")
 
@@ -44,7 +48,6 @@ async def _no_sleep(_: float) -> None:
 @pytest_asyncio.fixture
 async def app_with_engine() -> AsyncIterator[tuple[AsyncClient, object]]:
     from src.automation.manager import EngineManager
-    from src.api.ws import broadcast as ws_broadcast
     from src.main import create_app
 
     pages = [_start_attempt_page(), _fx("single_choice.html")]
@@ -59,7 +62,7 @@ async def app_with_engine() -> AsyncIterator[tuple[AsyncClient, object]]:
     app.state.engine_manager = EngineManager(
         browser_factory=browser_factory,
         ai_factory=lambda: ai,
-        broadcast=ws_broadcast,
+        broadcast=_discard,
         engine_sleep=_no_sleep,
     )
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import time
 
@@ -58,7 +59,7 @@ class GeminiProvider(AIProvider):
             response = await asyncio.wait_for(
                 self._client.aio.models.generate_content(
                     model=self._model_name,
-                    contents=prompt,
+                    contents=_contents(prompt, question),
                     config=config,
                 ),
                 timeout=self._timeout_s,
@@ -83,6 +84,18 @@ class GeminiProvider(AIProvider):
             from_cache=False,
             latency_ms=latency_ms,
         )
+
+
+def _contents(prompt: str, question: NormalizedQuestion) -> str | list[types.Part]:
+    if not question.images:
+        return prompt
+    return [
+        *(
+            types.Part.from_bytes(data=base64.b64decode(img.data), mime_type=img.mime)
+            for img in question.images
+        ),
+        types.Part.from_text(text=prompt),
+    ]
 
 
 def _classify(exc: Exception) -> Exception:

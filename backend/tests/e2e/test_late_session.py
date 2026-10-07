@@ -104,7 +104,8 @@ async def test_backend_error_shows_toast(
     page = await browser_context.new_page()
     await page.goto(f"{mock_moodle['base_url']}/mod/quiz/attempt.php?cmid=305095")
 
-    toast = page.locator(".lms-tool-toast.lms-tool-toast--err")
-    await toast.wait_for(state="attached", timeout=10_000)
-    text = (await toast.text_content()) or ""
-    assert "INVALID_TOKEN" in text or "backend error" in text.lower()
+    # Errors are shown on the question itself, with retry/manual actions.
+    badge = page.locator(".lms-tool-badge--error").first
+    await badge.wait_for(state="attached", timeout=10_000)
+    text = (await badge.text_content()) or ""
+    assert "INVALID_TOKEN" in text

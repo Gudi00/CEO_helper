@@ -94,7 +94,7 @@ class _FormScreenState extends State<FormScreen> {
     final s = widget.settings.settings.value;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Google Forms AI'),
+        title: const Text('СЭО helper'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),

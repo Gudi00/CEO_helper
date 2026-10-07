@@ -12,6 +12,7 @@ def _isolated_env(tmp_path, monkeypatch):
     db_file = tmp_path / "test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_file}")
     monkeypatch.setenv("BACKEND_TOKEN", "test-token")
+    monkeypatch.setenv("PAIRED_ORIGINS_FILE", str(tmp_path / "paired_origins"))
     monkeypatch.setenv("GEMINI_API_KEY", "")
     monkeypatch.setenv("OLLAMA_ENABLED", "false")
 

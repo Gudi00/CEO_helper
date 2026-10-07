@@ -2,7 +2,8 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8765:8765"
+      # Только loopback: сервер не должен быть виден из локальной сети.
+      - "127.0.0.1:8765:8765"
     volumes:
       - lms-data:/data
     env_file:
@@ -11,6 +12,10 @@ services:
       BACKEND_HOST: "0.0.0.0"
       DATABASE_URL: "sqlite+aiosqlite:////data/quiz.db"
       TOKEN_FILE: "/data/token"
+      # Ollama, запущенная на хосте (Docker Desktop; на Linux см. extra_hosts ниже)
+      OLLAMA_HOST: "http://host.docker.internal:11434"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   # Локальная LLM через Ollama (опционально — раскомментировать при необходимости)

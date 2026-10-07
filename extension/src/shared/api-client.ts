@@ -1,5 +1,5 @@
 /**
- * Thin HTTP + WebSocket wrapper around the local backend (127.0.0.1:8765).
+ * Thin HTTP wrapper around the local backend (127.0.0.1:8765).
  * Reads `backendUrl` / `backendToken` from chrome.storage at construction
  * — for tests we accept them directly.
  */
@@ -9,9 +9,11 @@ import type {
   AnswerResult,
   ExecutionMode,
   ExtensionSettings,
+  HealthInfo,
+  ModelInfo,
+  SessionState,
   StartSessionRequest,
   StartSessionResponse,
-  WSEvent,
 } from "./types.js";
 
 export class ApiError extends Error {
@@ -43,10 +45,29 @@ export class BackendClient {
     this.fetch = config.fetchImpl ?? globalThis.fetch.bind(globalThis);
   }
 
-  async health(): Promise<{ status: string; version: string }> {
+  async health(): Promise<HealthInfo> {
     const r = await this.fetch(`${this.backendUrl}/api/health`);
     if (!r.ok) throw await this._toApiError(r);
-    return (await r.json()) as { status: string; version: string };
+    return (await r.json()) as HealthInfo;
+  }
+
+  /** Trade a one-time pairing code for the backend token. */
+  async pair(code: string): Promise<string> {
+    const r = await this.fetch(`${this.backendUrl}/api/pair`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (!r.ok) throw await this._toApiError(r);
+    return ((await r.json()) as { token: string }).token;
+  }
+
+  async models(): Promise<ModelInfo[]> {
+    return this._get<ModelInfo[]>("/api/models");
+  }
+
+  async getSession(sessionId: string): Promise<SessionState> {
+    return this._get<SessionState>(`/api/session/${sessionId}`);
   }
 
   async startSession(req: StartSessionRequest): Promise<StartSessionResponse> {
@@ -77,15 +98,12 @@ export class BackendClient {
     if (!r.ok && r.status !== 204) throw await this._toApiError(r);
   }
 
-  /**
-   * Open a WS connection and authenticate. The returned EventTarget-like
-   * object emits typed events; caller must `close()` it when done.
-   */
-  async openWs(sessionId: string): Promise<TypedWebSocket> {
-    const wsUrl =
-      this.backendUrl.replace(/^http/, "ws") + `/ws/${sessionId}`;
-    const ws = new WebSocket(wsUrl);
-    return await TypedWebSocket.create(ws, this.token);
+  private async _get<T>(path: string): Promise<T> {
+    const r = await this.fetch(`${this.backendUrl}${path}`, {
+      headers: { "X-Backend-Token": this.token },
+    });
+    if (!r.ok) throw await this._toApiError(r);
+    return (await r.json()) as T;
   }
 
   private async _post<T>(path: string, body: unknown): Promise<T> {
@@ -118,61 +136,6 @@ export class BackendClient {
       /* response not JSON */
     }
     return new ApiError(r.status, code, message);
-  }
-}
-
-export type WSListener = (event: WSEvent) => void;
-
-/**
- * Wraps a WebSocket, sends the auth handshake, and re-emits parsed
- * messages as typed events. Auto-reconnect is left to the caller for now
- * (the extension popup decides whether to retry).
- */
-export class TypedWebSocket {
-  private listeners = new Set<WSListener>();
-
-  private constructor(private readonly ws: WebSocket) {
-    ws.addEventListener("message", (ev) => {
-      try {
-        const data = JSON.parse(ev.data as string) as WSEvent;
-        for (const fn of this.listeners) fn(data);
-      } catch {
-        /* swallow parse errors — server-side bug, not ours */
-      }
-    });
-  }
-
-  static async create(ws: WebSocket, token: string): Promise<TypedWebSocket> {
-    await new Promise<void>((resolve, reject) => {
-      const onOpen = () => {
-        ws.removeEventListener("open", onOpen);
-        ws.removeEventListener("error", onError);
-        resolve();
-      };
-      const onError = (e: Event) => {
-        ws.removeEventListener("open", onOpen);
-        ws.removeEventListener("error", onError);
-        reject(e);
-      };
-      ws.addEventListener("open", onOpen);
-      ws.addEventListener("error", onError);
-    });
-    ws.send(JSON.stringify({ type: "auth", token }));
-    return new TypedWebSocket(ws);
-  }
-
-  on(listener: WSListener): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  send(message: { type: string } & Record<string, unknown>): void {
-    this.ws.send(JSON.stringify(message));
-  }
-
-  close(): void {
-    this.listeners.clear();
-    this.ws.close();
   }
 }
 

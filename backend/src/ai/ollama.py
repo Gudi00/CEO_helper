@@ -62,6 +62,8 @@ class OllamaProvider(AIProvider):
                 {"role": "user", "content": prompt},
             ],
         }
+        if question.images:
+            kwargs["messages"][1]["images"] = [img.data for img in question.images]
         if not self._think:
             kwargs["format"] = "json"
 

@@ -18,14 +18,13 @@ SessionStatus = Literal["running", "completed", "aborted", "failed"]
 
 class StartSessionRequest(BaseModel):
     mode: ExecutionMode
-    cmid: str
+    cmid: str = Field(max_length=64)
     access_strategy: AccessStrategy = "extension_native"
-    ai_provider_override: str | None = None
+    ai_provider_override: str | None = Field(default=None, max_length=64)
 
 
 class StartSessionResponse(BaseModel):
     session_id: UUID
-    ws_url: str
 
 
 class SessionStateDTO(BaseModel):
@@ -48,7 +47,7 @@ class AnswerRequest(BaseModel):
     question: NormalizedQuestion
     use_cache: bool = True
     model_preference: ModelPreference = "accurate"
-    system_prompt: str | None = None
+    system_prompt: str | None = Field(default=None, max_length=4000)
 
 
 class FeedbackRequest(BaseModel):
@@ -97,6 +96,7 @@ class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"
     ai_provider_primary: str
     version: str
+    api_version: int = 1
 
 
 class ErrorBody(BaseModel):

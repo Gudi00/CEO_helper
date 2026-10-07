@@ -30,6 +30,14 @@ export interface QuestionMetadata {
   has_images: boolean;
 }
 
+export type QuestionImageMime = "image/png" | "image/jpeg" | "image/webp";
+
+export interface QuestionImage {
+  mime: QuestionImageMime;
+  /** base64 without the data: prefix */
+  data: string;
+}
+
 export interface NormalizedQuestion {
   id: string;
   hash: string;
@@ -37,6 +45,7 @@ export interface NormalizedQuestion {
   text: string;
   options: Option[];
   metadata: QuestionMetadata;
+  images?: QuestionImage[];
 }
 
 export interface AnswerResult {
@@ -59,10 +68,33 @@ export interface StartSessionRequest {
 
 export interface StartSessionResponse {
   session_id: string;
-  ws_url: string;
 }
 
 export type ModelPreference = "fast" | "accurate";
+
+/** Where answers come from: the local server, or pasted in by the user. */
+export type AnswerSource = "server" | "manual";
+
+/** Must equal the backend's API_VERSION (see /api/health). */
+export const API_VERSION = 1;
+
+export interface HealthInfo {
+  status: string;
+  version: string;
+  api_version?: number;
+}
+
+export interface ModelInfo {
+  id: ModelPreference;
+  model: string;
+}
+
+/** Written to chrome.storage.local by the content script, read by the popup. */
+export interface QuizProgress {
+  total: number;
+  done: number;
+  failed: number;
+}
 
 export interface AnswerRequest {
   session_id: string;
@@ -84,19 +116,6 @@ export interface SessionState {
   max_score: number | null;
 }
 
-// --- WS event union ---
-
-export type WSEvent =
-  | { type: "session_state"; session_id: string; mode: ExecutionMode; status: SessionStatus; current_page: number; questions_answered: number }
-  | { type: "question_loaded"; question_id: string; page_number: number }
-  | ({ type: "answer_suggested"; question_id: string } & AnswerResult)
-  | { type: "engine_clicked"; question_id: string; option_index: number; delay_ms?: number }
-  | { type: "page_advanced"; from: number; to: number }
-  | { type: "attempt_completed"; session_id: string; score: number | null; max_score: number | null; duration_s?: number }
-  | { type: "error"; code: string; message: string; fatal?: boolean; fallback?: string }
-  | { type: "log"; level: string; msg: string }
-  | { type: "ping" };
-
 // --- Storage shape (chrome.storage.local) ---
 
 export interface StealthDotSettings {
@@ -113,6 +132,9 @@ export interface ExtensionSettings {
   modelPreference: ModelPreference;
   systemPrompt: string; // empty string = use backend default
   stealthDot: StealthDotSettings;
+  answerSource: AnswerSource;
+  /** Extra Moodle site, e.g. "https://lms.example.edu"; empty = built-in only. */
+  moodleOrigin: string;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -123,4 +145,9 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   modelPreference: "accurate",
   systemPrompt: "",
   stealthDot: { diameter: 10, offsetX: 0, offsetY: 0 },
+  answerSource: "server",
+  moodleOrigin: "",
 };
+
+/** Below this confidence an answer is shown as doubtful. */
+export const LOW_CONFIDENCE = 0.6;

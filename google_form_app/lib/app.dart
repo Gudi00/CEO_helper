@@ -15,7 +15,7 @@ class GoogleFormApp extends StatelessWidget {
       valueListenable: settings.settings,
       builder: (context, _, __) {
         return MaterialApp(
-          title: 'Google Forms AI',
+          title: 'СЭО helper',
           theme: ThemeData(
             colorSchemeSeed: const Color(0xFF2ecc71),
             useMaterial3: true,

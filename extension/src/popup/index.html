@@ -2,127 +2,181 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <title>LMS Quiz Assistant</title>
+    <title>СЭО helper</title>
     <style>
-      :root { color-scheme: light; }
+      :root { color-scheme: light dark;
+        --bg: #ffffff; --text: #111827; --muted: #6b7280; --border: #d1d5db;
+        --surface: #f3f4f6; --surface-2: #f9fafb; --accent: #15803d; --on-accent: #ffffff;
+        --danger: #dc2626; --ok-bg: #ecfdf5; --ok-text: #047857;
+        --err-bg: #fef2f2; --err-text: #b91c1c; }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111827; --text: #f3f4f6; --muted: #9ca3af; --border: #4b5563;
+          --surface: #1f2937; --surface-2: #1f2937; --accent: #16a34a; --on-accent: #ffffff;
+          --danger: #dc2626; --ok-bg: #064e3b; --ok-text: #a7f3d0;
+          --err-bg: #7f1d1d; --err-text: #fecaca;
+        }
+      }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
       body {
         font: 13px/1.4 system-ui, sans-serif;
         margin: 0;
         padding: 12px;
         width: 320px;
-        color: #111827;
+        color: var(--text);
+        background: var(--bg);
       }
       h1 { font-size: 14px; margin: 0 0 12px; }
       label { display: block; margin: 8px 0 4px; font-weight: 600; }
       input, select {
         width: 100%; box-sizing: border-box;
-        padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px;
-        font: inherit;
+        padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px;
+        font: inherit; background: var(--bg); color: var(--text);
       }
       .row { display: flex; gap: 8px; }
       .row > * { flex: 1; }
       button {
-        padding: 8px 12px; border: 1px solid #d1d5db;
-        background: #f9fafb; cursor: pointer; border-radius: 4px;
+        padding: 8px 12px; border: 1px solid var(--border);
+        background: var(--surface-2); color: var(--text); cursor: pointer; border-radius: 4px;
         font: inherit;
       }
-      .btn-primary { background: #2ecc71; color: #fff; border-color: #2ecc71; }
-      .btn-danger  { background: #ef4444; color: #fff; border-color: #ef4444; }
-      .status {
-        margin-top: 12px; padding: 8px; border-radius: 4px;
-        background: #f3f4f6;
+      /* #15803d on white text is 5:1; the old #2ecc71 was about 2:1. */
+      .btn-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+      button:disabled { opacity: 0.5; cursor: default; }
+      [hidden] { display: none !important; }
+      .panel {
+        margin-top: 10px; padding: 8px; border: 1px solid var(--border);
+        border-radius: 4px; background: var(--surface-2);
       }
-      .status--ok { background: #ecfdf5; color: #047857; }
-      .status--err { background: #fef2f2; color: #b91c1c; }
-      .small { font-size: 11px; color: #6b7280; }
+      .panel label { margin-top: 0; }
+      code { font-size: 12px; }
+      .btn-danger  { background: var(--danger); color: #fff; border-color: var(--danger); }
+      .status {
+        margin-bottom: 4px; padding: 8px; border-radius: 4px;
+        background: var(--surface);
+      }
+      .status--ok { background: var(--ok-bg); color: var(--ok-text); }
+      .status--err { background: var(--err-bg); color: var(--err-text); }
+      .small { font-size: 11px; color: var(--muted); }
       textarea {
         width: 100%; box-sizing: border-box;
-        padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+        padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px;
         font: inherit; resize: vertical; min-height: 80px;
+        background: var(--bg); color: var(--text);
       }
       details { margin: 10px 0 0; }
       summary {
         cursor: pointer; font-weight: 600; font-size: 12px;
-        color: #374151; user-select: none; padding: 4px 0;
+        color: var(--muted); user-select: none; padding: 4px 0;
       }
-      summary:hover { color: #111827; }
+      summary:hover { color: var(--text); }
       .prompt-footer { display: flex; justify-content: flex-end; margin-top: 4px; }
       .btn-sm {
-        padding: 3px 8px; font-size: 11px; border: 1px solid #d1d5db;
-        background: #f3f4f6; cursor: pointer; border-radius: 4px;
+        padding: 3px 8px; font-size: 11px; border: 1px solid var(--border);
+        background: var(--surface); color: var(--text); cursor: pointer; border-radius: 4px;
       }
     </style>
   </head>
   <body>
-    <h1>LMS Quiz Assistant</h1>
+    <h1>СЭО helper</h1>
 
-    <div class="row">
-      <div>
-        <label for="mode">Режим</label>
-        <select id="mode">
-          <option value="assist">Подсказчик</option>
-          <option value="stealth">Скрытый (точки)</option>
-          <option value="step_by_step">Step-by-step</option>
-          <option value="full_auto">Full auto</option>
-        </select>
+    <div id="status" class="status" role="status" aria-live="polite">Проверяю сервер…</div>
+
+    <div id="pair-panel" class="panel" hidden>
+      <label for="pair-code">Код сопряжения</label>
+      <div class="small">
+        Запустите сервер командой <code>lms-tool run</code> и введите 6 цифр из его окна.
       </div>
-      <div>
-        <label for="model-preference">Модель</label>
-        <select id="model-preference">
-          <option value="accurate">Точная (deepseek-r1)</option>
-          <option value="fast">Быстрая (qwen2.5)</option>
-        </select>
+      <div class="row" style="margin-top:6px">
+        <input id="pair-code" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="000000" />
+        <button id="pair-btn" class="btn-primary" type="button">Связать</button>
       </div>
     </div>
 
-    <div id="stealth-panel" style="display:none;margin-top:8px;padding:8px;border:1px solid #e5e7eb;border-radius:4px;background:#f9fafb;">
-      <div class="small" style="font-weight:600;margin-bottom:6px;">Настройки точки</div>
+    <label for="answer-source">Источник ответа</label>
+    <select id="answer-source">
+      <option value="server">Сервер с нейросетью</option>
+      <option value="manual">Вручную, без сервера</option>
+    </select>
+
+    <div id="server-panel">
       <div class="row">
         <div>
-          <label for="dot-diameter">Диаметр (px)</label>
-          <input type="number" id="dot-diameter" value="10" min="1" max="100" />
+          <label for="mode">Режим</label>
+          <select id="mode">
+            <option value="assist">Подсказки</option>
+            <option value="stealth">Скрытый (точки)</option>
+            <option value="step_by_step">По шагам</option>
+            <option value="full_auto">Full auto</option>
+          </select>
         </div>
         <div>
-          <label for="dot-offset-x">Смещение X (px)</label>
-          <input type="number" id="dot-offset-x" value="0" />
+          <label for="model-preference">Модель</label>
+          <select id="model-preference">
+            <option value="accurate">Точная</option>
+            <option value="fast">Быстрая</option>
+          </select>
         </div>
       </div>
-      <div style="margin-top:4px;">
-        <label for="dot-offset-y">Смещение Y (px)</label>
-        <input type="number" id="dot-offset-y" value="0" />
+
+      <div id="stealth-panel" class="panel" style="display:none">
+        <div class="small" style="font-weight:600;margin-bottom:6px;">Настройки точки</div>
+        <div class="row">
+          <div>
+            <label for="dot-diameter">Диаметр (px)</label>
+            <input type="number" id="dot-diameter" value="10" min="1" max="100" />
+          </div>
+          <div>
+            <label for="dot-offset-x">Смещение X (px)</label>
+            <input type="number" id="dot-offset-x" value="0" />
+          </div>
+        </div>
+        <div style="margin-top:4px;">
+          <label for="dot-offset-y">Смещение Y (px)</label>
+          <input type="number" id="dot-offset-y" value="0" />
+        </div>
+      </div>
+
+      <div id="progress" class="small" style="margin-top:8px" role="status" aria-live="polite"></div>
+
+      <div class="row" style="margin-top: 12px">
+        <button id="start" class="btn-primary" type="button">Начать</button>
+        <button id="stop" class="btn-danger" type="button">Остановить</button>
       </div>
     </div>
-
-    <label for="cmid">cmid (id теста)</label>
-    <input id="cmid" placeholder="например 305095" />
-
-    <label for="backend-url">Backend URL</label>
-    <input id="backend-url" value="http://127.0.0.1:8765" />
-
-    <label for="backend-token">Backend Token</label>
-    <input id="backend-token" type="password" placeholder="из ~/.config/lms-tool/token" />
-
-    <label class="small">
-      <input type="checkbox" id="show-overlay" /> Показывать подсветку в DOM
-    </label>
 
     <details>
-      <summary>Системный промт (необязательно)</summary>
+      <summary>Настройки</summary>
+
+      <label class="small">
+        <input type="checkbox" id="show-overlay" style="width:auto" /> Показывать подсказки на странице
+      </label>
+
+      <label for="moodle-url">Адрес вашего Moodle</label>
+      <div class="row">
+        <input id="moodle-url" placeholder="например lms.example.edu" />
+        <button id="moodle-connect" class="btn-sm" type="button" style="flex:0 0 auto">Подключить</button>
+      </div>
+      <div class="small">Нужен, если ваш сайт с тестами — не lms.bsuir.by.</div>
+
+      <label for="backend-url">Адрес сервера</label>
+      <input id="backend-url" value="http://127.0.0.1:8765" />
+
+      <label for="backend-token">Токен сервера</label>
+      <input id="backend-token" type="password" placeholder="заполняется при сопряжении" />
+
+      <label for="cmid">Номер теста (если не определился сам)</label>
+      <input id="cmid" placeholder="определяется по адресу страницы" />
+
+      <label for="system-prompt">Свой промпт для нейросети (необязательно)</label>
       <textarea
         id="system-prompt"
-        placeholder="Оставь пустым — будет технический промт по умолчанию.&#10;&#10;Пример для истории:&#10;Ты — эксперт по истории Беларуси. Отвечай строго по белорусской историографии и учебной программе БГУИР."
+        placeholder="Оставьте пустым — будет технический промпт по умолчанию.&#10;&#10;Пример: Вы — эксперт по истории Беларуси. Отвечайте строго по учебной программе."
       ></textarea>
       <div class="prompt-footer">
-        <button id="prompt-reset" class="btn-sm" type="button">Сбросить к умолчанию</button>
+        <button id="prompt-reset" class="btn-sm" type="button">Сбросить</button>
       </div>
     </details>
-
-    <div class="row" style="margin-top: 12px">
-      <button id="start" class="btn-primary" type="button">Старт</button>
-      <button id="stop" class="btn-danger" type="button">Стоп</button>
-    </div>
-
-    <div id="status" class="status">Backend: проверка…</div>
 
     <script type="module" src="./popup.ts"></script>
   </body>

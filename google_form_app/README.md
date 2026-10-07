@@ -1,4 +1,4 @@
-# Google Forms AI (`google_form_app`)
+# СЭО helper — приложение для форм (`google_form_app`)
 
 Автономное мобильное приложение (Flutter, iOS + Android), которое помогает
 проходить тесты в **Google Forms** с помощью Gemini. Работает **локально на

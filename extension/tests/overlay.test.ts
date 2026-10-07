@@ -355,3 +355,71 @@ describe("highlight integration", () => {
     expect(marked?.className).toBe("r1");
   });
 });
+
+describe("showStatusBadge", () => {
+  it("replaces the previous badge and exposes the status", async () => {
+    const { showStatusBadge } = await import("@/content/overlay.js");
+    const q = mountQuestion();
+    showStatusBadge(q, "queued", "В очереди…");
+    showStatusBadge(q, "thinking", "Нейросеть думает…");
+
+    const badges = q.querySelectorAll(".lms-tool-badge");
+    expect(badges).toHaveLength(1);
+    expect(badges[0]?.getAttribute("data-lms-tool-status")).toBe("thinking");
+    expect(badges[0]?.textContent).toContain("Нейросеть думает");
+  });
+
+  it("is replaced by the answer badge", async () => {
+    const { showStatusBadge } = await import("@/content/overlay.js");
+    const q = mountQuestion();
+    showStatusBadge(q, "thinking", "Нейросеть думает…");
+    highlight(q, answer());
+
+    expect(q.querySelector("[data-lms-tool-status]")).toBeNull();
+    expect(q.querySelectorAll(".lms-tool-badge")).toHaveLength(1);
+  });
+
+  it("runs an action when its button is clicked", async () => {
+    const { showStatusBadge } = await import("@/content/overlay.js");
+    const q = mountQuestion();
+    const onClick = vi.fn();
+    showStatusBadge(q, "error", "Сервер не отвечает.", [{ label: "Повторить", onClick }]);
+
+    const btn = q.querySelector<HTMLButtonElement>(".lms-tool-badge__btn");
+    expect(btn?.textContent).toBe("Повторить");
+    btn?.click();
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+});
+
+describe("showManualPanel", () => {
+  it("passes the pasted reply to onSubmit and shows its error text", async () => {
+    const { showManualPanel } = await import("@/content/overlay.js");
+    const q = mountQuestion();
+    const onSubmit = vi.fn().mockReturnValue("Не удалось распознать ответ.");
+    showManualPanel(q, { onCopy: async () => true, onSubmit });
+
+    const input = q.querySelector<HTMLTextAreaElement>(".lms-tool-badge__input");
+    expect(input).not.toBeNull();
+    (input as HTMLTextAreaElement).value = "что-то";
+    const buttons = q.querySelectorAll<HTMLButtonElement>(".lms-tool-badge__btn");
+    buttons[1]?.click();
+
+    expect(onSubmit).toHaveBeenCalledWith("что-то");
+    expect(q.querySelector(".lms-tool-badge__hint")?.textContent).toBe(
+      "Не удалось распознать ответ.",
+    );
+  });
+
+  it("never interprets pasted text as HTML", async () => {
+    const { showManualPanel } = await import("@/content/overlay.js");
+    const q = mountQuestion();
+    const payload = '<img src=x onerror="alert(1)">';
+    showManualPanel(q, { onCopy: async () => true, onSubmit: () => payload });
+
+    q.querySelectorAll<HTMLButtonElement>(".lms-tool-badge__btn")[1]?.click();
+
+    expect(q.querySelector(".lms-tool-badge img")).toBeNull();
+    expect(q.querySelector(".lms-tool-badge__hint")?.textContent).toBe(payload);
+  });
+});

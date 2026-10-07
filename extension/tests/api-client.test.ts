@@ -84,7 +84,7 @@ describe("BackendClient.startSession", () => {
       "POST http://127.0.0.1:8765/api/session/start": (init) => {
         captured = init;
         return jsonResponse(
-          { session_id: "abc-123", ws_url: "ws://127.0.0.1:8765/ws/abc-123" },
+          { session_id: "abc-123" },
           { status: 201 },
         );
       },
@@ -100,7 +100,6 @@ describe("BackendClient.startSession", () => {
       access_strategy: "extension_native",
     });
     expect(resp.session_id).toBe("abc-123");
-    expect(resp.ws_url).toContain("abc-123");
 
     const headers = captured?.headers as Record<string, string>;
     expect(headers["X-Backend-Token"]).toBe("secret-tok");

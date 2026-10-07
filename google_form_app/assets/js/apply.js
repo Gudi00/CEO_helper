@@ -81,13 +81,12 @@
         ? 'AI: ' + result.answer_text
         : 'AI: вариант ' +
           (result.answer_indices || []).map(function (i) { return i + 1; }).join(', ');
-    div.innerHTML =
-      label +
-      ' <span class="gfa-badge__meta">' +
-      pct +
-      '%' +
-      (result.from_cache ? ' · из кеша' : '') +
-      '</span>';
+    // Model output is untrusted: build the badge from text nodes, never HTML.
+    div.appendChild(document.createTextNode(label + ' '));
+    var meta = document.createElement('span');
+    meta.className = 'gfa-badge__meta';
+    meta.textContent = pct + '%' + (result.from_cache ? ' · из кеша' : '');
+    div.appendChild(meta);
     if (extraBtn) div.appendChild(extraBtn);
     var anchor = container.querySelector('[role="heading"]') || container.firstChild;
     if (anchor && anchor.parentNode) {

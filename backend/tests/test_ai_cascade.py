@@ -83,15 +83,23 @@ async def test_cascade_falls_back_on_recoverable_errors(exc_type):
 
 
 @pytest.mark.asyncio
-async def test_cascade_propagates_invalid_response_without_fallback():
+async def test_cascade_falls_back_on_invalid_response():
     primary = Recording("primary", raise_exc=InvalidResponse("bad json"))
     fallback = Recording("fallback")
     cascade = CascadeProvider([primary, fallback])
 
+    result = await cascade.answer(_q())
+
+    assert result.provider == "fallback"
+    assert fallback.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_cascade_raises_invalid_response_when_it_is_the_last_error():
+    cascade = CascadeProvider([Recording("only", raise_exc=InvalidResponse("bad"))])
+
     with pytest.raises(InvalidResponse):
         await cascade.answer(_q())
-
-    assert fallback.calls == 0
 
 
 @pytest.mark.asyncio

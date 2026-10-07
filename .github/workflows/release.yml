@@ -1,0 +1,93 @@
+name: Release
+
+# Тег вида v0.2.0 собирает готовые программы под три ОС и архив расширения
+# и прикладывает их к черновику релиза вместе с контрольными суммами.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  server:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: windows-latest
+            name: windows
+          - os: macos-latest
+            name: macos
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: backend
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[bundle]"
+      - run: python packaging/build.py
+      # Собранная программа должна запускаться сама, без установленного Python.
+      - name: Smoke test
+        run: |
+          ./dist/lms-tool/lms-tool --version
+          BACKEND_PORT=18765 DATABASE_URL="sqlite+aiosqlite:///./smoke.db" TOKEN_FILE=./smoke-token \
+            ./dist/lms-tool/lms-tool run &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:18765/api/health && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Archive
+        run: |
+          cd dist
+          if [ "${{ matrix.name }}" = "windows" ]; then
+            7z a -tzip "../lms-tool-${{ matrix.name }}.zip" lms-tool
+          else
+            tar -czf "../lms-tool-${{ matrix.name }}.tar.gz" lms-tool
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.name }}
+          path: backend/lms-tool-${{ matrix.name }}.*
+
+  extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: cd dist && zip -r ../seo-helper-extension.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension
+          path: extension/seo-helper-extension.zip
+
+  publish:
+    needs: [server, extension]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - run: cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" out/* --repo "${{ github.repository }}" --draft --title "${{ github.ref_name }}"

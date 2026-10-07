@@ -32,7 +32,6 @@ from uvicorn import Config, Server
 
 from src.ai.base import AIProvider, AnswerResult
 from src.automation.manager import EngineManager
-from src.api.ws import broadcast as ws_broadcast
 from src.moodle.types import NormalizedQuestion
 
 # --- root paths ---------------------------------------------------------
@@ -40,6 +39,10 @@ from src.moodle.types import NormalizedQuestion
 ROOT = Path(__file__).resolve().parents[3]
 EXTENSION_DIST = ROOT / "extension" / "dist"
 FIXTURES = ROOT / "backend" / "tests" / "fixtures" / "moodle"
+
+
+async def _discard(_session_id: object, _message: object) -> None:
+    return None
 
 
 def pytest_collection_modifyitems(config, items):
@@ -181,7 +184,7 @@ def backend_factory(tmp_path, monkeypatch) -> Callable[..., dict[str, Any]]:
         app.state.engine_manager = EngineManager(
             browser_factory=_failing_browser_factory,
             ai_factory=lambda: ai,
-            broadcast=ws_broadcast,
+            broadcast=_discard,
             engine_sleep=_no_sleep,
         )
 
