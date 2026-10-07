@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import importlib.util
 from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+
+
+# The browser tests import Playwright at collection time; without it
+# installed (CI, a plain dev setup) the whole directory is left out.
+collect_ignore = [] if importlib.util.find_spec("playwright") else ["e2e"]
 
 
 @pytest.fixture(autouse=True)
