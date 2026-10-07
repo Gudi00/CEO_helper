@@ -16,8 +16,12 @@ from typing import Any
 
 import pytest
 
-from src.automation.browser import BrowserError
-from src.automation.selenium_browser import SeleniumBrowser
+# Selenium is an optional extra (`pip install ".[engine]"`); the wrapper
+# imports it inside its methods, so without it these tests can't run.
+pytest.importorskip("selenium")
+
+from src.automation.browser import BrowserError  # noqa: E402
+from src.automation.selenium_browser import SeleniumBrowser  # noqa: E402
 
 
 class _FakeElement:
