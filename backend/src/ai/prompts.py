@@ -46,8 +46,14 @@ def render_user_prompt(q: NormalizedQuestion) -> str:
         else "выбери ОДИН ИЛИ НЕСКОЛЬКО правильных вариантов"
     )
     options_block = "\n".join(f"  {opt.index}) {opt.text}" for opt in q.options)
+    images_note = (
+        f"К вопросу приложено изображений: {len(q.images)} — учитывай их.\n"
+        if q.images
+        else ""
+    )
     return (
         f"Тип вопроса: {q_type_human}\n"
+        f"{images_note}"
         f"Вопрос:\n{q.text}\n\n"
         f"Варианты ответа (индексы 0-based):\n{options_block}\n\n"
         "Верни ТОЛЬКО JSON-объект, описанный в system message."

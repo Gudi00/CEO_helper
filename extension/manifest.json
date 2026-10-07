@@ -1,10 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "LMS Quiz Assistant",
+  "name": "СЭО helper",
   "version": "0.1.0",
-  "description": "Assist + step-by-step + full-auto for Moodle quizzes (lms.bsuir.by)",
+  "description": "Подсказки с объяснением для тестов Moodle: локальный сервер с нейросетью или ручной режим",
   "minimum_chrome_version": "120",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "clipboardWrite"
+  ],
   "host_permissions": [
     "https://lms.bsuir.by/*",
     "http://127.0.0.1:8765/*"
@@ -15,13 +20,31 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://lms.bsuir.by/mod/quiz/*"],
-      "js": ["src/content/content.ts"],
+      "matches": [
+        "https://lms.bsuir.by/mod/quiz/*"
+      ],
+      "js": [
+        "src/content/content.ts"
+      ],
       "run_at": "document_idle"
     }
   ],
   "action": {
     "default_popup": "src/popup/index.html",
-    "default_title": "LMS Quiz Assistant"
-  }
+    "default_title": "СЭО helper"
+  },
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

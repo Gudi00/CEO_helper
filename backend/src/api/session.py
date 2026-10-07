@@ -30,8 +30,7 @@ async def start_session(req: StartSessionRequest) -> StartSessionResponse:
         )
         db.add(session)
         await db.flush()
-        ws_url = f"ws://{settings.backend_host}:{settings.backend_port}/ws/{session.id}"
-        return StartSessionResponse(session_id=session.id, ws_url=ws_url)
+        return StartSessionResponse(session_id=session.id)
 
 
 @router.get("/{session_id}", response_model=SessionStateDTO)

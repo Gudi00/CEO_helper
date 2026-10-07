@@ -145,3 +145,32 @@ describe("parseQuestions", () => {
     expect(opt0?.className).toBe("r0");
   });
 });
+
+describe("formulas in question text", () => {
+  it("keeps a TeX-filter image as its alt text", async () => {
+    await loadFixture("with_image.html");
+    const [q] = await parseQuestions({ cmid: "1" });
+    expect(q!.text).toBe("Решите уравнение: [x^2 = 4]");
+  });
+
+  it("keeps MathJax source and drops the rendered copy", async () => {
+    document.body.innerHTML = `
+      <div class="que multichoice" id="question-1-1">
+        <div class="qtext">Чему равно
+          <span class="MathJax_Preview">junk</span>
+          <span class="MathJax"><span>x2</span></span>
+          <script type="math/tex">x^2</script> при x = 3?
+        </div>
+        <div class="answer">
+          <div class="r0"><input type="radio" value="1"><label>6</label></div>
+          <div class="r1"><input type="radio" value="2"><label>
+            <mjx-container><mjx-math>9</mjx-math><mjx-assistive-mml><math><semantics>
+              <mn>9</mn><annotation encoding="application/x-tex">3^2</annotation>
+            </semantics></math></mjx-assistive-mml></mjx-container></label></div>
+        </div>
+      </div>`;
+    const [q] = await parseQuestions({ cmid: "1" });
+    expect(q!.text).toBe("Чему равно $x^2$ при x = 3?");
+    expect(q!.options.map((o) => o.text)).toEqual(["6", "$3^2$"]);
+  });
+});

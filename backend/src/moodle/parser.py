@@ -7,6 +7,7 @@ parsers must produce identical NormalizedQuestion objects from the same HTML
 
 from __future__ import annotations
 
+import copy
 import re
 
 from bs4 import BeautifulSoup, Tag
@@ -63,7 +64,7 @@ def _parse_one(
     qtext = container.select_one(".qtext")
     if qtext is None:
         raise MoodleParseError(f"No .qtext in question {q_id_attr}")
-    text = _clean_text(qtext.get_text(" ", strip=True))
+    text = _clean_text(_readable_text(qtext))
     if not text:
         raise MoodleParseError(f"Empty .qtext in question {q_id_attr}")
 
@@ -110,7 +111,7 @@ def _extract_options(container: Tag) -> list[Option]:
             continue
         label = row.find("label")
         source = label if label else row
-        raw_text = source.get_text(" ", strip=True)
+        raw_text = _readable_text(source)
         text = _strip_answernumber(_clean_text(raw_text))
         if not text:
             continue
@@ -122,6 +123,34 @@ def _extract_options(container: Tag) -> list[Option]:
             )
         )
     return options
+
+
+_MATH_RENDER_SELECTOR = (
+    ".MathJax, .MathJax_Preview, .MathJax_Display, .MJX_Assistive_MathML, mjx-container"
+)
+
+
+def _readable_text(node: Tag) -> str:
+    """Text of a node with formulas kept as source instead of rendering
+    debris: a TeX-filter image becomes `[alt]`, a MathJax
+    `<script type="math/tex">` becomes `$tex$`, rendered spans are dropped.
+    Must stay in step with `readableText` in the extension's moodle-parser.ts.
+    """
+    clone = copy.copy(node)
+    for el in clone.select("mjx-container"):
+        tex = el.select_one('annotation[encoding="application/x-tex"]')
+        if tex is not None and tex.get_text():
+            el.insert_before(f" ${tex.get_text().strip()}$ ")
+    for el in clone.select(_MATH_RENDER_SELECTOR):
+        el.decompose()
+    for el in clone.select('script[type^="math/tex"]'):
+        el.replace_with(f" ${(el.string or '').strip()}$ ")
+    for el in clone.select("script, style"):
+        el.decompose()
+    for img in clone.select("img"):
+        alt = str(img.get("alt") or "").strip()
+        img.replace_with(f" [{alt}] " if alt else " ")
+    return clone.get_text(" ", strip=True)
 
 
 def _clean_text(s: str) -> str:

@@ -83,3 +83,29 @@ def test_answernumber_prefix_stripped():
     qs = parse_questions(_read("single_choice.html"), cmid="305095")
     for opt in qs[0].options:
         assert not opt.text.startswith(("1.", "2.", "3.", "4."))
+
+
+def test_tex_image_is_kept_as_alt_text():
+    qs = parse_questions(_read("with_image.html"), cmid="1")
+    assert qs[0].text == "Решите уравнение: [x^2 = 4]"
+
+
+def test_mathjax_source_is_kept_and_rendered_copy_dropped():
+    html = """
+      <div class="que multichoice" id="question-1-1">
+        <div class="qtext">Чему равно
+          <span class="MathJax_Preview">junk</span>
+          <span class="MathJax"><span>x2</span></span>
+          <script type="math/tex">x^2</script> при x = 3?
+        </div>
+        <div class="answer">
+          <div class="r0"><input type="radio" value="1"><label>6</label></div>
+          <div class="r1"><input type="radio" value="2"><label>
+            <mjx-container><mjx-math>9</mjx-math><mjx-assistive-mml><math><semantics>
+              <mn>9</mn><annotation encoding="application/x-tex">3^2</annotation>
+            </semantics></math></mjx-assistive-mml></mjx-container></label></div>
+        </div>
+      </div>"""
+    q = parse_questions(html, cmid="1")[0]
+    assert q.text == "Чему равно $x^2$ при x = 3?"
+    assert [o.text for o in q.options] == ["6", "$3^2$"]

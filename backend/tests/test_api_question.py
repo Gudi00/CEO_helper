@@ -273,3 +273,86 @@ async def test_answer_without_ai_provider_returns_503(ai_client_factory):
             )
         assert r.status_code == 503
         assert r.json()["detail"]["code"] == "AI_NOT_CONFIGURED"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_identical_questions_call_ai_once(ai_client_factory):
+    import asyncio
+
+    ai = StubAI(answer_indices=[0], confidence=0.9)
+    async for client in ai_client_factory(ai):
+        sid = await _start_session(client)
+        body = {"session_id": sid, "question": _question().model_dump()}
+
+        responses = await asyncio.gather(
+            *(client.post("/api/question/answer", json=body) for _ in range(5))
+        )
+
+        assert [r.status_code for r in responses] == [200] * 5
+        assert ai.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_oversized_question_text_is_rejected(ai_client_factory):
+    ai = StubAI()
+    async for client in ai_client_factory(ai):
+        sid = await _start_session(client)
+        q = _question().model_dump()
+        q["text"] = "x" * 8001
+
+        r = await client.post(
+            "/api/question/answer", json={"session_id": sid, "question": q}
+        )
+
+        assert r.status_code == 422
+        assert ai.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_provider_error_does_not_leak_details(ai_client_factory):
+    from src.ai.base import ProviderUnavailable
+
+    ai = StubAI(raise_exc=ProviderUnavailable("secret upstream text sk-123"))
+    async for client in ai_client_factory(ai):
+        sid = await _start_session(client)
+
+        r = await client.post(
+            "/api/question/answer",
+            json={"session_id": sid, "question": _question().model_dump()},
+        )
+
+        assert r.status_code == 503
+        assert "sk-123" not in r.text
+
+
+@pytest.mark.asyncio
+async def test_question_with_image_is_never_served_from_cache(ai_client_factory):
+    ai = StubAI(answer_indices=[0], confidence=0.95)
+    async for client in ai_client_factory(ai):
+        sid = await _start_session(client)
+        q = _question().model_dump()
+        q["metadata"]["has_images"] = True
+        q["images"] = [{"mime": "image/png", "data": "aGk="}]
+        body = {"session_id": sid, "question": q}
+
+        first = await client.post("/api/question/answer", json=body)
+        second = await client.post("/api/question/answer", json=body)
+
+        assert first.status_code == second.status_code == 200
+        assert second.json()["from_cache"] is False
+        assert ai.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_svg_image_is_rejected(ai_client_factory):
+    ai = StubAI()
+    async for client in ai_client_factory(ai):
+        sid = await _start_session(client)
+        q = _question().model_dump()
+        q["images"] = [{"mime": "image/svg+xml", "data": "aGk="}]
+
+        r = await client.post(
+            "/api/question/answer", json={"session_id": sid, "question": q}
+        )
+
+        assert r.status_code == 422

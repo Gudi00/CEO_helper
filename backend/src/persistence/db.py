@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -15,8 +16,12 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 def _ensure_engine() -> async_sessionmaker[AsyncSession]:
     global _engine, _session_factory
     if _session_factory is None:
+        url = get_settings().database_url
+        # SQLite creates the file but not the folder it lives in.
+        if url.startswith("sqlite") and ":///" in url:
+            Path(url.split(":///", 1)[1]).parent.mkdir(parents=True, exist_ok=True)
         _engine = create_async_engine(
-            get_settings().database_url,
+            url,
             future=True,
             echo=False,
         )

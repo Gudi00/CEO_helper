@@ -16,14 +16,14 @@ from src.moodle.types import NormalizedQuestion
 
 logger = logging.getLogger(__name__)
 
-_RECOVERABLE = (QuotaExceeded, ProviderTimeout, ProviderUnavailable)
+_RECOVERABLE = (QuotaExceeded, ProviderTimeout, ProviderUnavailable, InvalidResponse)
 
 
 class CascadeProvider:
-    """Tries providers in order. Falls back on recoverable errors only.
+    """Tries providers in order, falling back on any provider failure.
 
-    See ADR 0003: Gemini → Ollama. InvalidResponse is NOT recoverable —
-    it likely means the question is malformed, not the provider.
+    An InvalidResponse also falls through: a model that returned unusable
+    JSON says nothing about whether the next model can answer.
     """
 
     name = "cascade"
@@ -48,7 +48,5 @@ class CascadeProvider:
                 )
                 last_err = exc
                 continue
-            except InvalidResponse:
-                raise
         assert last_err is not None
         raise last_err

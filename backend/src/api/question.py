@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -12,7 +15,6 @@ from src.ai.base import (
     InvalidResponse,
 )
 from src.api.dto import AnswerRequest, FeedbackRequest
-from src.api.ws import broadcast
 from src.auth import verify_token
 from src.persistence import Answer, Question, Session, get_session
 
@@ -24,6 +26,12 @@ router = APIRouter(
 
 CACHE_TTL = timedelta(days=30)
 CACHE_MIN_CONFIDENCE = 0.7
+
+logger = logging.getLogger(__name__)
+
+# One lock per question hash: identical questions arriving together (two
+# tabs, a re-rendered page) share a single model call and a single insert.
+_hash_locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
 def _get_provider(request: Request, preference: str = "accurate") -> AIProvider:
@@ -44,29 +52,39 @@ def _get_provider(request: Request, preference: str = "accurate") -> AIProvider:
 async def answer_question(
     req: AnswerRequest, request: Request
 ) -> AnswerResult:
-    if req.use_cache:
-        cached = await _get_recent_cached_answer(req.question.hash)
-        if cached is not None:
-            await _broadcast_answer(req, cached)
-            return cached
+    async with _hash_locks[req.question.hash]:
+        # The hash covers text only, so two questions that differ just by
+        # their picture share it — never serve or reuse a cached answer here.
+        if req.use_cache and not req.question.metadata.has_images:
+            cached = await _get_recent_cached_answer(req.question.hash)
+            if cached is not None:
+                return cached
 
-    provider = _get_provider(request, req.model_preference)
-    try:
-        result = await provider.answer(req.question, system_prompt=req.system_prompt)
-    except InvalidResponse as exc:
-        raise HTTPException(
-            status.HTTP_502_BAD_GATEWAY,
-            detail={"code": "AI_INVALID_RESPONSE", "message": str(exc)},
-        ) from exc
-    except AIProviderError as exc:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"code": "AI_PROVIDER_FAILED", "message": str(exc)},
-        ) from exc
+        provider = _get_provider(request, req.model_preference)
+        try:
+            result = await provider.answer(req.question, system_prompt=req.system_prompt)
+        except InvalidResponse as exc:
+            # Raw model output stays in the log; the client gets a code only.
+            logger.warning("invalid AI response for %s: %s", req.question.hash[:12], exc)
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "code": "AI_INVALID_RESPONSE",
+                    "message": "Model returned an unusable answer",
+                },
+            ) from exc
+        except AIProviderError as exc:
+            logger.warning("AI provider failed for %s: %s", req.question.hash[:12], exc)
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "AI_PROVIDER_FAILED",
+                    "message": type(exc).__name__,
+                },
+            ) from exc
 
-    await _persist_answer(req, result)
-    await _broadcast_answer(req, result)
-    return result
+        await _persist_answer(req, result)
+        return result
 
 
 @router.get("/{question_hash}/cached", response_model=AnswerResult)
@@ -103,21 +121,6 @@ async def submit_feedback(
                 detail={"code": "NOT_FOUND", "message": "answer"},
             )
         answer.was_correct = body.was_correct
-
-
-async def _broadcast_answer(req: AnswerRequest, result: AnswerResult) -> None:
-    await broadcast(
-        req.session_id,
-        {
-            "type": "answer_suggested",
-            "question_id": req.question.id,
-            "answer_indices": result.answer_indices,
-            "confidence": result.confidence,
-            "reasoning": result.reasoning,
-            "provider": result.provider,
-            "from_cache": result.from_cache,
-        },
-    )
 
 
 async def _get_recent_cached_answer(

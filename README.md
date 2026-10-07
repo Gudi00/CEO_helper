@@ -1,11 +1,11 @@
-# LMS Quiz Automation Tool
+# СЭО helper
 
 > Инженерная демонстрация: гибрид Chrome-расширения и Python-бэкенда, который разбирает вопросы Moodle, спрашивает ответ у AI-каскада и работает прямо в живой сессии браузера. Учебный/портфолио-проект.
 
 ![Backend](https://img.shields.io/badge/backend-Python%20%7C%20FastAPI-3776ab?style=flat-square&logo=python)
 ![Extension](https://img.shields.io/badge/extension-TypeScript%20MV3-3178c6?style=flat-square&logo=typescript)
 ![AI](https://img.shields.io/badge/AI-Gemini%20%2B%20Ollama-ff6f00?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![License](https://img.shields.io/badge/license-proprietary-lightgrey?style=flat-square)
 ![Last Commit](https://img.shields.io/github/last-commit/Gudi00/a_SEO_bot?style=flat-square)
 
 ---
@@ -20,7 +20,7 @@
 
 ## 📖 Описание
 
-**LMS Quiz Automation Tool** — гибрид из Chrome MV3-расширения и локального Python-бэкенда, построенный вокруг работы с тестами в Moodle (на примере [lms.bsuir.by](https://lms.bsuir.by/)). Расширение живёт в реальной пользовательской сессии браузера: оно разбирает вопрос прямо со страницы, отправляет его на локальный бэкенд, а тот обращается к AI-каскаду (Gemini Pro как основной провайдер, локальная Gemma/Ollama как fallback) и возвращает ответ. История попыток хранится в SQLite.
+**СЭО helper** — гибрид из Chrome MV3-расширения и локального Python-бэкенда, построенный вокруг работы с тестами в Moodle (на примере [lms.bsuir.by](https://lms.bsuir.by/)). Расширение живёт в реальной пользовательской сессии браузера: оно разбирает вопрос прямо со страницы, отправляет его на локальный бэкенд, а тот обращается к AI-каскаду (Gemini Pro как основной провайдер, локальная Gemma/Ollama как fallback) и возвращает ответ. История попыток хранится в SQLite.
 
 Инструмент поддерживает три режима работы: **подсказчик** (assist — просто показывает вариант), **пошаговое подтверждение** (step-by-step — ждёт твоего согласия) и **полный автомат** (full-auto). Бэкенд работает только локально (`127.0.0.1`), наружу из приватных данных ничего не уходит, кроме самого текста вопроса в выбранный AI-провайдер.
 
@@ -36,7 +36,7 @@
 
 | Технология | Для чего используется |
 |------------|-----------------------|
-| Python 3.12 + FastAPI | Локальный бэкенд: API, WebSocket, оркестрация |
+| Python 3.12 + FastAPI | Локальный бэкенд: API, оркестрация |
 | Uvicorn | ASGI-сервер |
 | SQLAlchemy 2.0 + Alembic | Хранение истории попыток (SQLite), миграции |
 | google-genai (Gemini) | Основной AI-провайдер |
@@ -54,7 +54,6 @@
 | **Расширение в живой сессии** | Работа в реальной вкладке пользователя, без отдельного headless-браузера — естественное поведение страницы |
 | **Локальный бэкенд по токену** | Бэкенд слушает только `127.0.0.1`, токен генерируется при первом старте и хранится в `~/.config/lms-tool/` |
 | **Единый парсер на двух сторонах** | Разбор вопроса и хеширование есть и в расширении (TS), и в бэкенде (Python) — для сверки и истории |
-| **WebSocket-обмен** | Ответы и статусы стримятся между бэкендом и расширением в реальном времени |
 
 ---
 
@@ -65,7 +64,7 @@
 - **🎚 Три режима** — assist (подсказка), step-by-step (с подтверждением), full-auto
 - **🕹 Engine-режим** — автоматизация через Selenium + CDP
 - **🗂 История попыток** — хранение в SQLite с миграциями Alembic
-- **🔌 Локальный API + WebSocket** — обмен между расширением и бэкендом
+- **🔌 Локальный API** — обмен между расширением и бэкендом по HTTP на 127.0.0.1
 - **🔐 Локальная работа** — бэкенд только на `127.0.0.1`, доступ по токену
 - **🐳 Docker** — `docker-compose` для бэкенда
 
@@ -81,42 +80,29 @@
 - (Опционально) Ollama с моделью Gemma для локального fallback
 - Ключ Gemini API
 
-### Бэкенд
+Пошагово, от установки до первой подсказки: **[docs/QUICKSTART.md](docs/QUICKSTART.md)**. Подробности — в [docs/INSTALL.md](docs/INSTALL.md).
+
+Коротко:
 
 ```bash
 git clone https://github.com/Gudi00/a_SEO_bot.git
-cd a_SEO_bot/backend
+cd a_SEO_bot
 
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
-cp .env.example .env        # впиши GEMINI_API_KEY
-
-alembic upgrade head
-uvicorn src.main:app --host 127.0.0.1 --port 8765
+sh scripts/install.sh       # Windows: scripts\install.bat · macOS: scripts/install.command
+lms-tool doctor             # что настроено и что осталось сделать
+sh scripts/start.sh         # сервер + код сопряжения (Windows: scripts\start.bat)
 ```
 
-### Расширение
+Дальше в Chrome: `chrome://extensions` → включить Developer mode → **Load unpacked** → выбрать `extension/dist`, затем ввести в окне расширения код сопряжения из окна сервера.
 
-```bash
-cd ../extension
-npm install
-npm run build               # сборка в extension/dist
-```
-
-Дальше в Chrome: `chrome://extensions` → включить Developer mode → **Load unpacked** → выбрать `extension/dist`.
-
-### Docker (бэкенд)
-
-```bash
-docker compose up -d --build
-```
+Источником ответов может быть Gemini, любой OpenAI-совместимый API (OpenRouter, DeepSeek, Groq, LM Studio), локальная модель через Ollama или **ручной режим** — без сервера и ключей.
 
 ---
 
 ## 📸 Архитектура
 
 ```
-┌──────────────────────────┐     WebSocket / HTTP     ┌───────────────────────────┐
+┌──────────────────────────┐           HTTP           ┌───────────────────────────┐
 │   Chrome MV3 Extension    │ ◀──────(127.0.0.1)─────▶ │      Python Backend       │
 │  content · sw · popup     │                          │   FastAPI · WS · CDP      │
 │  moodle-parser (TS)       │                          │                           │
@@ -149,7 +135,7 @@ docker compose up -d --build
 backend/                 # Python · FastAPI
 ├── src/
 │   ├── main.py          # точка входа, сборка приложения
-│   ├── api/             # session, question, history, engine, ws, health, dto
+│   ├── api/             # session, question, history, engine, pairing, models, health, dto
 │   ├── ai/              # base, gemini, ollama, cascade, prompts — каскад провайдеров
 │   ├── automation/      # browser, selenium_browser, engine, manager (CDP)
 │   ├── moodle/          # parser, hashing, types — разбор вопросов
@@ -178,7 +164,7 @@ docs/                    # ARCHITECTURE, ROADMAP, DEVELOPMENT, ADR (10 шт.), s
 
 ### Связь расширения и бэкенда
 
-Content-script разбирает вопрос (`moodle-parser.ts`), передаёт его через service-worker на локальный бэкенд (`api-client.ts`), а ответы и статусы прилетают обратно по WebSocket (`api/ws.py`). Один и тот же вопрос хешируется на обеих сторонах, чтобы сверять и складывать историю.
+Content-script разбирает вопрос (`moodle-parser.ts`), передаёт его через service-worker на локальный бэкенд (`api-client.ts`), а ответ возвращается тем же HTTP-запросом. Один и тот же вопрос хешируется на обеих сторонах, чтобы сверять и складывать историю.
 
 ### Companion-приложение
 
@@ -215,8 +201,8 @@ AI-провайдеры ведут себя по-разному: облако м
 
 ## 📄 Лицензия
 
-Распространяется по лицензии **MIT**. Подробнее — в файле [LICENSE](LICENSE).
+Закрытый код, все права защищены. Использование, копирование и распространение — только с письменного разрешения правообладателя. Подробнее — в файле [LICENSE](LICENSE).
 
 ```
-MIT License © 2026 Gudi00
+© 2026 Gudi00. Все права защищены.
 ```

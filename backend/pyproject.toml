@@ -1,7 +1,7 @@
 [project]
 name = "lms-quiz-backend"
 version = "0.1.0"
-description = "Local backend for LMS quiz automation tool"
+description = "СЭО helper: local backend for Moodle quiz hints"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
 authors = [{ name = "EPAM intern" }]
@@ -11,21 +11,26 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
-    "sqlalchemy>=2.0",
+    "sqlalchemy[asyncio]>=2.0",
     "alembic>=1.14",
     "aiosqlite>=0.20",
     "httpx>=0.27",
     "google-genai>=1.0",
     "ollama>=0.4",
-    "websockets>=13",
     "python-multipart>=0.0.12",
     "beautifulsoup4>=4.12",
 ]
+
+[project.scripts]
+lms-tool = "src.cli:main"
 
 [project.optional-dependencies]
 engine = [
     "undetected-chromedriver>=3.5",
     "selenium>=4.27",
+]
+bundle = [
+    "pyinstaller>=6.10",
 ]
 dev = [
     "pytest>=8.3",

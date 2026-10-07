@@ -27,7 +27,6 @@ async def test_session_start_then_get(client):
     assert r.status_code == 201, r.text
     body = r.json()
     sid = body["session_id"]
-    assert body["ws_url"].endswith(sid)
 
     r2 = await client.get(f"/api/session/{sid}")
     assert r2.status_code == 200

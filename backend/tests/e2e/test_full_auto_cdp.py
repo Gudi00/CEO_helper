@@ -27,9 +27,12 @@ from playwright.async_api import async_playwright
 
 from src.ai.base import AIProvider
 from src.automation.manager import EngineManager
-from src.api.ws import broadcast as ws_broadcast
 
 from tests.e2e.conftest import FIXTURES, StubAI
+
+
+async def _discard(_session_id: object, _message: object) -> None:
+    return None
 
 
 def _free_port() -> int:
@@ -139,7 +142,7 @@ async def test_full_auto_via_cdp(
         app.state.engine_manager = EngineManager(
             browser_factory=factory,
             ai_factory=lambda: ai,
-            broadcast=ws_broadcast,
+            broadcast=_discard,
             engine_sleep=_no_sleep,
         )
         from uvicorn import Config, Server
